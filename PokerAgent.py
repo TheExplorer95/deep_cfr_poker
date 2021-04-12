@@ -25,7 +25,7 @@ class TensorflowAgent(base.BaseAgent):
         # 0,0 in bet size history means (check, check -> next round). 3,3 means (bets 3, calls 3 -> next round).
         # 3,6,6 means (bets 3, raises to 6, calls 6)
 
-        ### assuming the observation is a tuple : cards = (52, 15, -1, -1 , ..); bet_history = (10, 1, 0, 0, 23, 0,0,0)
+        ### assuming the observation is a tuple : cards = [[51, 15], [-1, -1 ,-1], ..]; bet_history = [10, 10, 0, 0, 23, -1,-1,-1,-1,...]
 
         cards, bet_history = obs
 
