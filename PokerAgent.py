@@ -14,7 +14,10 @@ class TensorflowAgent(base.BaseAgent):
         )
 
         # define possible actions (implicit in model structure)
-
+    
+    def strategy(self,obs):
+        # get strategy from actor for obs
+        pass
 
     def act(self, obs):
         # betsizes, cards = obs[.....]
