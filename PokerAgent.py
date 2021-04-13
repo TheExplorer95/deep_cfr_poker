@@ -55,6 +55,6 @@ class TensorflowAgent(base.BaseAgent):
         sampled_action = dist.sample((1))
         # sample from resulting probability distribution
 
-        action = 0 # (sampled result from action distribution)
+        #action = 0 # (sampled result from action distribution)
 
-        return action
+        return sampled_action

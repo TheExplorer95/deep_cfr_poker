@@ -32,13 +32,16 @@ def get_info_state(obs, history, max_bet_number, mode= "flop only"):
     flop_cards = []
     turn = []
     river = []
+
     if c_cards_len:
         c_cards = [[convert_cards_to_id(card)] for card in c_cards]
 
         if c_cards_len >= 3:
             flop_cards = c_cards[:3]
+
         if c_cards_len >= 4:
             turn = c_cards[3]
+
         if c_cards_len ==5:
             river = c_cards[4]
 
@@ -46,31 +49,49 @@ def get_info_state(obs, history, max_bet_number, mode= "flop only"):
     while len(bet_history) < max_bet_number:
         bet_history.append(-1)
 
+    bet_history = tf.constant(bet_history, dtype = tf.float32)
+    hole_cards = tf.constant(hole_cards, dtype = tf.float32)
 
+    # padding for not yet given cards
     if mode == "flop only":
         # if no flop card is given, use no-card index (-1)
         if not len(flop_cards):
-            flop_cards = [[-1],[-1],[-1]]
+            flop_cards = tf.constant([
+            [[-1], [-1],[-1]]
+            ], dtype= tf.float32)
 
         output = [[hole_cards, flop_cards], bet_history]
 
     if mode == "hole cards only":
-        output = [[hole_cards], history]
+        output = [[hole_cards], bet_history]
 
     if mode == "flop + turn":
         if not len(flop_cards):
-            flop_cards = [[-1],[-1],[-1]]
+            flop_cards = tf.constant([
+            [[-1], [-1],[-1]]
+            ], dtype= tf.float32)
         if not len(turn):
-            turn = [[-1]]
+            turn = tf.constant([
+            [[-1]]
+            ], dtype = tf.float32)
         output = [[hole_cards, flop_cards, turn], bet_history]
 
     if mode == "full poker":
         if not len(flop_cards):
-            flop_cards = [[-1], [-1],[-1]]
+            flop_cards = tf.constant([
+            [[-1], [-1],[-1]]
+            ], dtype= tf.float32)
+
         if not len(turn):
-            turn = [[-1]]
+            turn = tf.constant([
+            [[-1]]
+            ], dtype = tf.float32)
+
         if not len(river):
-            river = [[-1]]
+            river = tf.constant([
+            [[-1]]
+            ], dtype = tf.float32)
+
         output = [[hole_cards, flop_cards, turn, river], bet_history]
 
     return output
