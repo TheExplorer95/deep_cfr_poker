@@ -60,21 +60,33 @@ def get_info_state(obs, history, max_bet_number, mode= "flop only"):
             [[-1], [-1],[-1]]
             ], dtype= tf.float32)
 
+        else:
+            flop_cards = tf.constant([flop_cards], dtype = tf.float32)
+
         output = [[hole_cards, flop_cards], bet_history]
 
     if mode == "hole cards only":
         output = [[hole_cards], bet_history]
 
+
     if mode == "flop + turn":
+
         if not len(flop_cards):
             flop_cards = tf.constant([
             [[-1], [-1],[-1]]
             ], dtype= tf.float32)
+        else:
+            flop_cards = tf.constant([flop_cards], dtype = tf.float32)
+
         if not len(turn):
             turn = tf.constant([
             [[-1]]
             ], dtype = tf.float32)
+        else:
+            turn = tf.constant([turn], dtype = tf.float32)
+
         output = [[hole_cards, flop_cards, turn], bet_history]
+
 
     if mode == "full poker":
         if not len(flop_cards):
@@ -82,15 +94,22 @@ def get_info_state(obs, history, max_bet_number, mode= "flop only"):
             [[-1], [-1],[-1]]
             ], dtype= tf.float32)
 
+        else:
+            flop_cards = tf.constant([flop_cards], dtype = tf.float32)
+
         if not len(turn):
             turn = tf.constant([
             [[-1]]
             ], dtype = tf.float32)
+        else:
+            turn = tf.constant([turn], dtype = tf.float32)
 
         if not len(river):
             river = tf.constant([
             [[-1]]
             ], dtype = tf.float32)
+        else:
+            river = tf.constant(river, dtype = tf.float32)
 
         output = [[hole_cards, flop_cards, turn, river], bet_history]
 
