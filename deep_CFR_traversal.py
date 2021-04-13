@@ -15,11 +15,65 @@ def get_history_cpy(orig_history):
 
 
 
-def get_info_state(obs, history):
+def get_info_state(obs, history, max_bet_number, mode= "flop only"):
     """ Transforms the observation dictionary from clubs env and the history list to an info state (input to the ANN model)"""
 
-    ##### TODO #####
-    pass
+    bet_history = get_history_cpy(history)
+    h_cards = obs["hole_cards"]
+    p_cards = obs["community_cards"]
+
+
+    # convert hole cards to indices.
+    hole_cards = [[convert_cards_to_id(card)] for card in h_cards]
+
+
+    # convert community cards to indices and split into flop, turn, river
+    c_cards_len = len(community_cards)
+    flop_cards = []
+    turn = []
+    river = []
+    if c_cards_len:
+        c_cards = [[convert_cards_to_id(card)] for card in c_cards]
+
+        if c_cards_len >= 3:
+            flop_cards = c_cards[:3]
+        if c_cards_len >= 4:
+            turn = c_cards[3]
+        if c_cards_len ==5:
+            river = c_cards[4]
+
+    # padding of bet history
+    while len(bet_history) < max_bet_number:
+        bet_history.append(-1)
+
+
+    if mode == "flop only":
+        # if no flop card is given, use no-card index (-1)
+        if not len(flop_cards):
+            flop_cards = [[-1],[-1],[-1]]
+
+        output = [[hole_cards, flop_cards], bet_history]
+
+    if mode == "hole cards only":
+        output = [[hole_cards], history]
+
+    if mode == "flop + turn":
+        if not len(flop_cards):
+            flop_cards = [[-1],[-1],[-1]]
+        if not len(turn):
+            turn = [[-1]]
+        output = [[hole_cards, flop_cards, turn], bet_history]
+
+    if mode == "full poker":
+        if not len(flop_cards):
+            flop_cards = [[-1], [-1],[-1]]
+        if not len(turn):
+            turn = [[-1]]
+        if not len(river):
+            river = [[-1]]
+        output = [[hole_cards, flop_cards, turn, river], bet_history]
+
+    return output
 
 def save_to_memory(type, player, info_state, iteration, values):
 
