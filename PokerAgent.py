@@ -20,7 +20,7 @@ class TensorflowAgent(base.BaseAgent):
         # get strategy
         pass
 
-    def act(self, obs):
+    def act(self, obs, strategy = False):
         # betsizes, cards = obs[.....]
         # tf_model(input, output)
         # actions = tf_model((betsizes, cards)) -> output: integer
@@ -46,7 +46,13 @@ class TensorflowAgent(base.BaseAgent):
         action_advantages = self.model(cards, bet_history)
 
         ### Softmax on action action_advantages
+        action_probabilities = tf.nn.softmax(action_advantages)
 
+        if strategy:
+            return action_probabilities
+
+        dist = tfp.distributions.Categorical(probs = strategy.numpy()[0])
+        sampled_action = dist.sample((1))
         # sample from resulting probability distribution
 
         action = 0 # (sampled result from action distribution)
