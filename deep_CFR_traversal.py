@@ -12,13 +12,20 @@ def get_history_cpy(orig_history):
 
     return copy.deepcopy(orig_history)
 
+
+
+
 def get_info_state(obs, history):
     """ Transforms the observation dictionary from clubs env and the history list to an info state (input to the ANN model)"""
+
+    ##### TODO #####
     pass
 
 def save_to_memory(type, player, info_state, iteration, values):
 
     """This function saves stuff to memory"""
+
+    ##### TODO #####
 
     ### bring info state and values and iteration into a useful data structure
 
