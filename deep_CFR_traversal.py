@@ -1,3 +1,4 @@
+import copy
 
 def get_env_cpy(orig_env):
     env_cpy = create_env()
@@ -6,18 +7,129 @@ def get_env_cpy(orig_env):
     return env_cpy
 
 
-def trainings_loop():
+def get_history_cpy(orig_history):
+    """copies a list"""
 
-    for CFR_iteration:
+    return copy.deepcopy(orig_history)
 
-        traversal(env, obs)
+
+
+
+def get_info_state(obs, history, max_bet_number, mode= "flop only"):
+    """ Transforms the observation dictionary from clubs env and the history list to an info state (input to the ANN model)"""
+
+    bet_history = get_history_cpy(history)
+    h_cards = obs["hole_cards"]
+    p_cards = obs["community_cards"]
+
+
+    # convert hole cards to indices.
+    hole_cards = [[convert_cards_to_id(card)] for card in h_cards]
+
+
+    # convert community cards to indices and split into flop, turn, river
+    c_cards_len = len(community_cards)
+    flop_cards = []
+    turn = []
+    river = []
+
+    if c_cards_len:
+        c_cards = [[convert_cards_to_id(card)] for card in c_cards]
+
+        if c_cards_len >= 3:
+            flop_cards = c_cards[:3]
+
+        if c_cards_len >= 4:
+            turn = c_cards[3]
+
+        if c_cards_len ==5:
+            river = c_cards[4]
+
+    # padding of bet history
+    while len(bet_history) < max_bet_number:
+        bet_history.append(-1)
+
+    bet_history = tf.constant(bet_history, dtype = tf.float32)
+    hole_cards = tf.constant(hole_cards, dtype = tf.float32)
+
+    # padding for not yet given cards
+    if mode == "flop only":
+        # if no flop card is given, use no-card index (-1)
+        if not len(flop_cards):
+            flop_cards = tf.constant([
+            [[-1], [-1],[-1]]
+            ], dtype= tf.float32)
+
+        else:
+            flop_cards = tf.constant([flop_cards], dtype = tf.float32)
+
+        output = [[hole_cards, flop_cards], bet_history]
+
+    if mode == "hole cards only":
+        output = [[hole_cards], bet_history]
+
+
+    if mode == "flop + turn":
+
+        if not len(flop_cards):
+            flop_cards = tf.constant([
+            [[-1], [-1],[-1]]
+            ], dtype= tf.float32)
+        else:
+            flop_cards = tf.constant([flop_cards], dtype = tf.float32)
+
+        if not len(turn):
+            turn = tf.constant([
+            [[-1]]
+            ], dtype = tf.float32)
+        else:
+            turn = tf.constant([turn], dtype = tf.float32)
+
+        output = [[hole_cards, flop_cards, turn], bet_history]
+
+
+    if mode == "full poker":
+        if not len(flop_cards):
+            flop_cards = tf.constant([
+            [[-1], [-1],[-1]]
+            ], dtype= tf.float32)
+
+        else:
+            flop_cards = tf.constant([flop_cards], dtype = tf.float32)
+
+        if not len(turn):
+            turn = tf.constant([
+            [[-1]]
+            ], dtype = tf.float32)
+        else:
+            turn = tf.constant([turn], dtype = tf.float32)
+
+        if not len(river):
+            river = tf.constant([
+            [[-1]]
+            ], dtype = tf.float32)
+        else:
+            river = tf.constant(river, dtype = tf.float32)
+
+        output = [[hole_cards, flop_cards, turn, river], bet_history]
+
+    return output
+
+def save_to_memory(type, player, info_state, iteration, values):
+
+    """This function saves stuff to memory"""
+
+    ##### TODO #####
+
+    ### bring info state and values and iteration into a useful data structure
+
+    ### save this data structure, e.g. a dict (for instance each iteration gets its own file?)
+
+    pass
 
 
 def deep_CFR(env, val_net, strat_net, CFR_iterations, num_traversals, num_players):
-    """
-
-    Does some stuff.
-
+    """"
     Parameters
     ----------
     env : gym.env instance
@@ -37,9 +149,7 @@ def deep_CFR(env, val_net, strat_net, CFR_iterations, num_traversals, num_player
     Returns
     -------
     strat_net : tf.keras.model class
-                The trained strategy network.
-
-    """
+                The trained strategy network.""""
 
     # initialize ANNs and memories
 
@@ -49,7 +159,7 @@ def deep_CFR(env, val_net, strat_net, CFR_iterations, num_traversals, num_player
                 # collect data from env via external sampling
                 env = create.env()
                 obs = env.reset()
-                payoff = traverse(e)
+                traverse(env, obs, history, p, t)
 
             # initialize new value network (if not first iteration) and train with val_mem_p
             # (only used for prediction of the next regret values)
@@ -58,12 +168,11 @@ def deep_CFR(env, val_net, strat_net, CFR_iterations, num_traversals, num_player
         # train the strat_net with strat_mem
         train_strat_net()
 
-    return
+    return 0
 
-def traverse(env, obs, history, traverser, advantage_mem_traverser, strat_mem, CFR_iteration):
+def traverse(env, obs, history, traverser, CFR_iteration):
     """
-    Does some stuff.
-    # input(histroy, traverser, val_model_0, val_model_1, val_mem_trav, strat_mem, t)
+    # input(history, traverser, val_model_0, val_model_1, val_mem_trav, strat_mem, t)
 
     Parameters
     ----------
@@ -96,11 +205,11 @@ def traverse(env, obs, history, traverser, advantage_mem_traverser, strat_mem, C
     None
 
     """
-    state_terminal = all(obs['active'])
-    if not state_terminal:
+    state_terminal = not all(obs['active'])
+    if state_terminal:
         # game state: end
         # calculate traversers payoff
-        traverser_payoff = obs['payoff'][traverser] - obs['commitment'][traverser]
+        traverser_payoff = obs['payoff'][traverser] - obs['commitment'][traverser] # gain or loss
 
         return traverser_payoff
 
@@ -119,29 +228,45 @@ def traverse(env, obs, history, traverser, advantage_mem_traverser, strat_mem, C
         # his val_net via regret matching (used for weighting when calculating
         # the advantages)
         # call model on observation, no softmax
-        obs = preprocess_obs(obs)
-        strategy = env.dealer.agents[traverser].act(obs, strategy=True)
+        info_state = get_info_state(obs, history)
+        strategy = env.dealer.agents[traverser].act(info_state, strategy=True)
 
         # 2.
         # iterate over all actions and do traversals starting from each actions
         # subsequent history
+        values = []
         for a in range(len(strategy)):
             # cpy environment
             # take selected action within copied environment
+            history_cpy = get_hist_cpy(history) # copy bet size history
             env_cpy = get_env_cpy(env)
             obs = env_cpy.step(a)
-            traverser_payoff = traverse(env_cpy, obs, ...)
 
-            return traverser_payoff
+            history_cpy.append(a) # add bet to bet history
+
+
+            traverser_payoff = traverse(env_cpy, obs, history_cpy, traverser, CFR_iteration)
+            values.append(traverser_payoff)
+
+            #return traverser_payoff
 
         # 3.
         # use returned payoff for advantage/regret computation
-        for a in range(len(actions)):
+        advantages = []
+        for a in range(len(strategy)):
             # compute advantages of each action
+            advantages.append(values[a] - np.sum(strategy.numpy() * np.array(values)))
 
         # 4.
         # append Infoset, action_advantages and CFR_iteration t to advantage_mem_traverser
 
+        save_to_memory(
+        type = "value",
+        player = traverser,
+        info_state = info_state,
+        iteration = CFR_iteration,
+        values = advantages
+        )
     else:
         # game state: traversers opponent has to take an action
 
@@ -149,15 +274,27 @@ def traverse(env, obs, history, traverser, advantage_mem_traverser, strat_mem, C
         # compute strategy (next action) from the Infoset of the opponent and his
         # val_net via regret matching
         # call model on observation, no softmax
-        obs = preprocess_obs(obs)
-        strategy = env.dealer.agents[3-traverser].act(obs, strategy=True)
+        info_state = get_info_state(obs, history)
+
+        non_traverser = 3 - traverser
+        strategy = env.dealer.agents[non_traverser].act(info_state, strategy=True) # env.act(orig_obs, strategy = True) probably is what works
 
         # 2.
         # append Infoset, action_probabilities and CFR_iteration t to strat_mem
-
+        save_to_memory(
+        type = "strategy",
+        player = non_traverser,
+        info_state = info_state,
+        iteration = CFR_iteration,
+        values = strategy.numpy()
+        )
         # 3.
         # copy env and take action according to action_probabilities
+        dist = tfp.distributions.Categorical(probs = strategy.numpy())
 
-        traverser_payoff = traverse()
-
-        return traverser_payoff
+        sampled_action = dist.sample((1)).numpy()
+        action = env.act(info_state)
+        obs = env.step(action)
+        # update history
+        history.append(action)
+        return traverse(env, obs, history, traverser, CFR_iteration)
