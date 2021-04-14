@@ -395,14 +395,14 @@ def traverse(env, obs, history, traverser, CFR_iteration):
 
 
 num_players = 2
-num_streets = 3
+num_streets = 1
 num_raises = 3
 
 
 output_dim = 256 # model
 
-n_cards = [2, 3, 1]
-n_community_cards = [0] + n_cards[1:]
+n_cards = [2]
+n_community_cards = [0] #+ n_cards[1:]
 
 n_cards_for_hand = min(5, sum(n_cards))
 
@@ -421,7 +421,7 @@ config_dict = {'num_players': num_players,
                'num_streets': num_streets,
                'blinds': [1, 2],
                'antes': 0,
-               'raise_sizes': [2,4,4],
+               'raise_sizes': [2],
                'num_raises': num_raises,
                'num_suits': 4,
                'num_ranks': 13,
