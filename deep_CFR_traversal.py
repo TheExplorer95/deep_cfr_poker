@@ -15,27 +15,25 @@ def get_history_cpy(orig_history):
 
 
 
-def get_info_state(obs, history, max_bet_number, mode= "flop only"):
-    """ Transforms the observation dictionary from clubs env and the history list to an info state (input to the ANN model)"""
+def get_info_state(obs, history, max_bet_number, mode="flop only"):
+    """ Transforms the observation dictionary from clubs env and the history
+        list to an info state (input to the ANN model)"""
 
     bet_history = get_history_cpy(history)
     h_cards = obs["hole_cards"]
-    p_cards = obs["community_cards"]
-
+    c_cards = obs["community_cards"]
 
     # convert hole cards to indices.
-    hole_cards = [[convert_cards_to_id(card)] for card in h_cards]
-
+    hole_cards = convert_cards_to_id(h_cards)
 
     # convert community cards to indices and split into flop, turn, river
-    c_cards_len = len(community_cards)
+    c_cards_len = len(c_cards)
     flop_cards = []
     turn = []
     river = []
 
     if c_cards_len:
-        c_cards = [[convert_cards_to_id(card)] for card in c_cards]
-
+        c_cards = convert_cards_to_id(c_cards)
         if c_cards_len >= 3:
             flop_cards = c_cards[:3]
 
@@ -114,6 +112,7 @@ def get_info_state(obs, history, max_bet_number, mode= "flop only"):
         output = [[hole_cards, flop_cards, turn, river], bet_history]
 
     return output
+
 
 def save_to_memory(type, player, info_state, iteration, values):
 
