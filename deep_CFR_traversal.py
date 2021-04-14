@@ -12,7 +12,46 @@ def get_history_cpy(orig_history):
 
     return copy.deepcopy(orig_history)
 
+def convert_cards_to_id(cards):
+    """
+    Computes the unique card id for a clubs.cards type card. Assumes a card
+    deck of size 52 with ranks clubs (♣), diamonds (♦), hearts (♥) and
+    spades (♠), and suits 2, 3, 4, 5, 6, 7, 8, 9, 10, B, D, K, A.
+    0 = duce of clubs; 1 = duce of diamonds ...
+                                ... 50 = ace of hearts; 51 ace of spades
+    Parameters
+    ----------
+    cards: list(clubs.card)
+        List of clubs.card cards to convert.
+    Returns
+    -------
+    converted_cards: list(card_ids)
+    """
 
+    # length of each card encoding (see class clubs.Card for reference)
+    # prime = 8, bit_rank = 4
+    oneHot_suit = 4
+    oneHot_rank = 16
+    oneHot_rank_offset = 3
+    encoding_length = 32
+
+    converted_cards = []
+    for card in cards:
+        # get card binary string (deals with shortening of string when
+        # 32Bit int not 32Bit long; python truncates higher_order bits in string
+        # representation when not flipped)
+        card_binary = '0'*(encoding_length-len(card._bin_str)) + card._bin_str
+
+        # extract rank and suit
+        card_suit = card_binary[oneHot_rank:oneHot_rank+oneHot_suit].find('1')
+        card_rank = card_binary[oneHot_rank_offset:oneHot_rank][::-1].find('1')
+
+        # compute card id
+        card_id = card_rank * 4 + card_suit
+
+        converted_cards.append([card_id])
+
+    return converted_cards
 
 
 def get_info_state(obs, history, max_bet_number, mode="flop only"):
@@ -24,7 +63,7 @@ def get_info_state(obs, history, max_bet_number, mode="flop only"):
     c_cards = obs["community_cards"]
 
     # convert hole cards to indices.
-    hole_cards = convert_cards_to_id(h_cards)
+    hole_cards = [convert_cards_to_id(h_cards)]
 
     # convert community cards to indices and split into flop, turn, river
     c_cards_len = len(c_cards)
@@ -47,7 +86,7 @@ def get_info_state(obs, history, max_bet_number, mode="flop only"):
     while len(bet_history) < max_bet_number:
         bet_history.append(-1)
 
-    bet_history = tf.constant(bet_history, dtype = tf.float32)
+    bet_history = tf.constant([bet_history], dtype = tf.float32)
     hole_cards = tf.constant(hole_cards, dtype = tf.float32)
 
     # padding for not yet given cards
@@ -55,9 +94,10 @@ def get_info_state(obs, history, max_bet_number, mode="flop only"):
         # if no flop card is given, use no-card index (-1)
         if not len(flop_cards):
             flop_cards = tf.constant([
-            [[-1], [-1],[-1]]
+            [[-1], [-1], [-1]]
             ], dtype= tf.float32)
 
+#         [[-1] for i in range(len(flop_cards))]
         else:
             flop_cards = tf.constant([flop_cards], dtype = tf.float32)
 

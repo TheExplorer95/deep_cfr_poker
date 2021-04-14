@@ -1,10 +1,10 @@
 import random
 import tensorflow as tf
 from clubs_gym.agent.base import BaseAgent
+import tensorflow_probability as tfp
 
-
-class TensorflowAgent(base.BaseAgent):
-    def __init__(self, model_path, agent_parameters):
+class TensorflowAgent(BaseAgent):
+    def __init__(self, model_path):
         super().__init__()
 
         # instantiate tensorflow model (functional api if possible)
@@ -20,7 +20,7 @@ class TensorflowAgent(base.BaseAgent):
         # get strategy
         pass
 
-    def act(self, obs, strategy = False):
+    def act(self, info_state, strategy = False):
         # betsizes, cards = obs[.....]
         # tf_model(input, output)
         # actions = tf_model((betsizes, cards)) -> output: integer
@@ -31,8 +31,6 @@ class TensorflowAgent(base.BaseAgent):
 
         ### assuming the observation is a tuple : cards = [[51, 15], [-1, -1 ,-1], ..]; bet_history = [10, 10, 0, 0, 23, -1,-1,-1,-1,...]
 
-        cards, bet_history = obs
-
         # GET MODEL INPUTS
         # state preflop: cards = [[1,2],[-1,-1,-1],[-1],[-1]]
         # state flop: ...
@@ -40,10 +38,7 @@ class TensorflowAgent(base.BaseAgent):
         # state preflop: bets = [0,0, ...... (max number of future bets)]
         #                       [0,0, -1,-1,-1,-1]
 
-        cards = tf.constant(cards, dtype= tf.float32)
-        bet_history = tf.constant(bet_history, dtype = tf.float32)
-
-        action_advantages = self.model(cards, bet_history)
+        action_advantages = self.model(info_state)
 
         ### Softmax on action action_advantages
         action_probabilities = tf.nn.softmax(action_advantages)
@@ -51,8 +46,9 @@ class TensorflowAgent(base.BaseAgent):
         if strategy:
             return action_probabilities
 
-        dist = tfp.distributions.Categorical(probs = strategy.numpy()[0])
-        sampled_action = dist.sample((1))
+        dist = tfp.distributions.Categorical(probs=action_probabilities.numpy()[0])
+        sampled_action = dist.sample().numpy()
+        print(f'action{sampled_action}')
         # sample from resulting probability distribution
 
         #action = 0 # (sampled result from action distribution)
