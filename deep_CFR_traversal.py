@@ -1,11 +1,30 @@
 import copy
+import copy.deepcopy as deepcopy
+from random import shuffle
 
-def get_env_cpy(orig_env):
-    env_cpy = create_env()
-    env_cpy._dealer = copy(orig_env._dealer)
+# def get_env_cpy(orig_env):
+#     env_cpy = create_env()
+#     env_cpy._dealer = copy(orig_env._dealer)
+#
+#     return env_cpy
+
+def get_env_cpy(env):
+    env_cpy = gym.make(env.unwrapped.spec.id)  # gets the gym environment name, e.g. "noLimit_TH-v0"
+    env_cpy.reset()
+
+    # 1. set previous obs
+    env_cpy.prev_obs = copy.deepcopy(env.prev_obs)
+
+    # 2. make copy of the dealer and shuffle its deck (new dealer produces different community cards)
+    env_cpy.dealer = copy.deepcopy(env.dealer)
+    shuffle(env_cpy.dealer.deck.cards)
+
+    # 3. create reference to the original agents (new env uses old models for sampling)
+    # creating new agents also possible, depends on computation overhead by ray:
+    #                                     [TensorflowAgent(f'test_model_{i}') for i in range(2)]
+    env_cpy.agents = copy.copy(env.agents)
 
     return env_cpy
-
 
 def get_history_cpy(orig_history):
     """copies a list"""
@@ -337,3 +356,12 @@ def traverse(env, obs, history, traverser, CFR_iteration):
         # update history
         history.append(action)
         return traverse(env, obs, history, traverser, CFR_iteration)
+
+
+## test traverse
+
+# create environment
+
+# reset environment, obtain obs,
+
+history = []
