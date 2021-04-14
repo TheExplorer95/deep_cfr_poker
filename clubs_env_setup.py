@@ -1,7 +1,13 @@
+import logging, os
+logging.disable(logging.WARNING)
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 import gym
 import clubs_gym
 from clubs_gym.agent.base import BaseAgent
-import numpy np
+import numpy as np
+from Tensorflow_Model import get_DeepCFR_model
+import tensorflow as tf
 
 
 class Random_Agent(BaseAgent):
@@ -10,18 +16,28 @@ class Random_Agent(BaseAgent):
     """
     def __init__(self, id):
         self.id = id
+        self.model = get_DeepCFR_model(256, [2, 3, 1, 1], 4, 3)
 
-    def act(self, obs):
-        action = np.random.randint(low=-1, high=5)
+    def act(self, obs, strategy):
+        # action = np.random.randint(low=-1, high=5)
+        hole_cards = tf.constant([[[1], [10]]], dtype=tf.float32)
+        flop = tf.constant([[[2], [9], [8]]], dtype=tf.float32)
+
+        cards_inp = [hole_cards, flop]
+        bets = tf.constant([[1, 2, 2, 4]], dtype=tf.float32)
+
+        action = softmax(self.model([cards_inp, bets]).numpy()).argmax()
+
+        breakpoint()
         print(f'agent-{self.id} action: {action}')
         return action
 
 
 def convert_cards_to_id(cards):
     """
-    Computes the unique card id for a clubs.cards type card. Assumes a card
-    deck of size 52 with ranks clubs (♣), diamonds (♦), hearts (♥) and
-    spades (♠), and suits 2, 3, 4, 5, 6, 7, 8, 9, 10, B, D, K, A.
+    Computes the unique card IDs for a list of cards with type clubs.card.
+    Assumes a card deck of size 52 with ranks clubs (♣), diamonds (♦),
+    hearts (♥) and spades (♠), and suits 2, 3, 4, 5, 6, 7, 8, 9, 10, B, D, K, A.
 
     0 = duce of clubs; 1 = duce of diamonds ...
                                 ... 50 = ace of hearts; 51 ace of spades
@@ -81,7 +97,7 @@ clubs_gym.envs.register({"noLimit_TH-v0": config_dict})
 env = gym.make("noLimit_TH-v0")
 
 # Pass agents with internal policy/strategy to the env (dealer object)
-env.register_agents([LTH_agent(i) for i in range(2)])
+env.register_agents([Random_Agent(i) for i in range(2)])
 
 # iterate over games
 for i in range(100):
