@@ -48,7 +48,7 @@ class TensorflowAgent(BaseAgent):
 
         dist = tfp.distributions.Categorical(probs=action_probabilities.numpy()[0])
         sampled_action = dist.sample().numpy()
-        print(f'action{sampled_action}')
+        #print(f'action{sampled_action}')
         # sample from resulting probability distribution
 
         #action = 0 # (sampled result from action distribution)
