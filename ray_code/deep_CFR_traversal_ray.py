@@ -74,7 +74,7 @@ def deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players, 
                 times.append(dt)
                 saves.extend(counter)
 
-        print(f"[CFR_iteration - {t} - d_t: {np.sum(times[-2:]):.4f}s, total_t: {np.sum(times):.4f}s, n_saved: {np.sum(saves[-2:])}, total_saved: {np.sum(saves)}")
+                print(f"traversals so far: - {k * num_runners} - d_t: {np.sum(times[-2:]):.4f}s, total_t: {np.sum(times):.4f}s, n_saved: {np.sum(saves[-2:])}, total_saved: {np.sum(saves)}")
 
             # initialize new value network (if not first iteration) and train with val_mem_p
             # (only used for prediction of the next regret values)

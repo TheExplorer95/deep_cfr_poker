@@ -8,11 +8,8 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 import numpy as np
 
-# def get_env_cpy(orig_env):
-#     env_cpy = create_env()
-#     env_cpy._dealer = copy(orig_env._dealer)
-#
-#     return env_cpy
+from memory_utils import MemoryWriter, flatten_data_for_memory ###### <<<<<---------- NEW
+
 
 def get_env_cpy(env):
     env_cpy = gym.make(env.unwrapped.spec.id)  # gets the gym environment name, e.g. "noLimit_TH-v0"
@@ -77,7 +74,6 @@ def convert_cards_to_id(cards):
         converted_cards.append([card_id])
 
     return converted_cards
-
 
 def get_info_state(obs, history, max_bet_number, mode):
     """ Transforms the observation dictionary from clubs env and the history
@@ -183,34 +179,14 @@ def get_info_state(obs, history, max_bet_number, mode):
 
     return output
 
-
-def save_to_memory(type, player, info_state, iteration, values):
-
-    """This function saves stuff to memory"""
-
-    ##### TODO #####
-
-    ### bring info state and values and iteration into a useful data structure
-
-    ### save this data structure, e.g. a dict (for instance each iteration gets its own file?)
-
-    pass
-
-
-def deep_CFR(env, val_net, strat_net, CFR_iterations, num_traversals, num_players):
+def deep_CFR(CFR_iterations, num_traversals, num_players):
+    global strategy_memory, advantage_memory
     """
     Parameters
     ----------
     env : gym.env instance
           The game to optimize a strategy for.
 
-    val_net : tf.keras.model class
-              The advantage value network used to approximate the regret value for action
-              taken and actions possible.
-
-    strat_net : tf.keras.model class
-                The strategy network used to approximate the average strategy at the end of
-                each iteration of deepCFR
 
     CFR_iterations : int
                      Number of times deepCFR is applied.
@@ -221,23 +197,92 @@ def deep_CFR(env, val_net, strat_net, CFR_iterations, num_traversals, num_player
                 The trained strategy network."""
 
     # initialize ANNs and memories
+    num_players = 2
+    num_streets = 1
+    num_raises = 3
+
+    output_dim = 256 # model
+
+    n_cards = [2]
+    n_community_cards = [0] #+ n_cards[1:]
+
+    n_cards_for_hand = min(5, sum(n_cards))
+
+    max_bet_number = n_bets = num_players * num_streets * num_raises
+    n_actions = 5
+
+    import os
+    os.environ['CUDA_VISIBLE_DEVICES'] = '-1' # use cpu instead of gpu
+    cfr_models = [get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions) for i in range(num_players)] # 2 agents
+
+    [model.save(f'test_model_{i}') for i, model in enumerate(cfr_models)]
+    # reset environment, obtain obs,
+    #Create HU LHE (1, 2) environment
+    config_dict = {'num_players': num_players,
+                   'num_streets': num_streets,
+                   'blinds': [1, 2],
+                   'antes': 0,
+                   'raise_sizes': [2],
+                   'num_raises': num_raises,
+                   'num_suits': 4,
+                   'num_ranks': 13,
+                   'num_hole_cards': n_cards[0],
+                   'mandatory_num_hole_cards': 0,
+                   'num_community_cards': n_community_cards,
+                   'start_stack': 1_000_000,
+                   'num_cards_for_hand': n_cards_for_hand}
+
+    clubs_gym.envs.register({"limit_easyHoldem-v0": config_dict})
+
+
+    # Pass agents with internal policy/strategy to the env (dealer object)
+
+    #env.register_agents([TensorflowAgent(f'test_model_{i}') for i in range(2)]) # 2 because two players
+
+    StrategyWriter = MemoryWriter(max_size = 1000, vector_length = 14, flatten_func = flatten_data_for_memory, file_name = "strategy_memory.h5")
+    AdvantageWriter = MemoryWriter(max_size = 1000, vector_length = 14, flatten_func = flatten_data_for_memory, file_name ="advantage_memory.h5")
 
     for t in range(CFR_iterations):
+
         for p in range(num_players):
+            # reload trained agent models
+            env = gym.make("limit_easyHoldem-v0")
+            env.register_agents([TensorflowAgent(f'test_model_{i}') for i in range(2)]) # 2 because two players
+            advantage_memory = []   # for RAY this should be done inside each runner as well !!!
+            strategy_memory = []
+
             for k in range(num_traversals):
                 # collect data from env via external sampling
-                env = create.env()
                 obs = env.reset()
+                history = []
+
+                ### Multiple runner run traverse in parallel and each should send back a filled advantage_memory and strategy_memory list
                 traverse(env, obs, history, p, t)
+
+                # concatenate all advantage_memory lists and all strategy_memory lists respectively
+
+
+                # write to disk every 30_000 info_states
+                if len(advantage_memory) > 100:
+                    print("save")
+                    AdvantageWriter.save_to_memory(advantage_memory)
+
+                if len(strategy_memory) > 100:
+                    print("save")
+                    StrategyWriter.save_to_memory(strategy_memory)
+            print("players switch")
 
             # initialize new value network (if not first iteration) and train with val_mem_p
             # (only used for prediction of the next regret values)
-            train_val_net()
+            #train_val_net()
 
         # train the strat_net with strat_mem
-        train_strat_net()
+        #train_strat_net()
 
     return 0
+
+
+
 
 def traverse(env, obs, history, traverser, CFR_iteration):
     """
@@ -283,7 +328,10 @@ def traverse(env, obs, history, traverser, CFR_iteration):
 
 
     global counter, strat_counter
+
+    global advantage_memory, strategy_memory
     mode = env.dealer.num_streets
+    max_bet_number = 6 # env.dealer.num_raises * env.dealer.num_players * mode
 
     state_terminal = not all(obs['active']) or obs["action"] == -1
     if state_terminal:
@@ -318,7 +366,6 @@ def traverse(env, obs, history, traverser, CFR_iteration):
         # subsequent history
         values = []
         for a in range(len(strategy.numpy()[0])):
-            counter +=1
             # cpy environment
             # take selected action within copied environment
             history_cpy = get_history_cpy(history) # copy bet size history
@@ -343,13 +390,13 @@ def traverse(env, obs, history, traverser, CFR_iteration):
         # 4.
         # append Infoset, action_advantages and CFR_iteration t to advantage_mem_traverser
 
-        save_to_memory(
-        type = "value",
-        player = traverser,
-        info_state = info_state,
-        iteration = CFR_iteration,
-        values = advantages
-        )
+        cards = []
+        for tensor in info_state[0]:
+            cards.append(tensor.numpy())
+        bet_hist = info_state[1].numpy()
+
+
+        advantage_memory.append(([cards, bet_hist], CFR_iteration, advantages))
 
         expected_infostate_value = np.sum(strategy.numpy()[0] * np.array(values))
 
@@ -369,14 +416,13 @@ def traverse(env, obs, history, traverser, CFR_iteration):
 
         # 2.
         # append Infoset, action_probabilities and CFR_iteration t to strat_mem
-        strat_counter +=1
-        save_to_memory(
-        type = "strategy",
-        player = non_traverser,
-        info_state = info_state,
-        iteration = CFR_iteration,
-        values = strategy.numpy()
-        )
+        cards = []
+        for tensor in info_state[0]:
+            cards.append(tensor.numpy())
+        bet_hist = info_state[1].numpy()
+
+
+        strategy_memory.append(([cards, bet_hist], CFR_iteration, strategy.numpy()))
         # 3.
         # copy env and take action according to action_probabilities
         dist = tfp.distributions.Categorical(probs = strategy.numpy())
@@ -392,8 +438,16 @@ def traverse(env, obs, history, traverser, CFR_iteration):
 ## test traverse
 # create environment
 
+CFR_iterations = 1
+num_traversals = 1_000
+num_players = 2
 
+strategy_memory = []
+advantage_memory = []
 
+deep_CFR(CFR_iterations, num_traversals, num_players)
+
+"""
 num_players = 2
 num_streets = 1
 num_raises = 3
@@ -457,3 +511,4 @@ for i in range(traversals):
     times.append(dt)
     print(f"{i+1}/100 done in {dt:.6f} seconds! Number of values appended: {counter}. Strategy memory filled: {strat_counter} times")
 print(f"{np.mean(times)} seconds on average for {traversals} traversals.")
+"""
