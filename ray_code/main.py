@@ -12,13 +12,13 @@ from PokerAgent import TensorflowAgent
 ray.init(logging_level=logging.INFO)
 
 # might be impoortant for model reinitialization during traversal
-activate_memory_growth()
+activate_memory_growth(cpu = True)
 
 
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 8
+num_traversals = 4
 CFR_iterations = 6
 
 # Set agent

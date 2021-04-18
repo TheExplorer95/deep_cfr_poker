@@ -2,15 +2,23 @@ from copy import deepcopy, copy
 from random import shuffle
 import tensorflow as tf
 import gym
+import os
 
 
-def activate_memory_growth():
+def activate_memory_growth(cpu = True):
+    
+    if cpu:
+        os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
     # allows for GPU memory growth
-    physical_devices = tf.config.list_physical_devices('GPU')
-    try:
-        tf.config.experimental.set_memory_growth(physical_devices[0], True)
-    except Exception:
-        print('[INFO] - Cannot activate memory growth.')
+
+    else:
+        physical_devices = tf.config.list_physical_devices('GPU')
+        try:
+            tf.config.experimental.set_memory_growth(physical_devices[0], True)
+        except Exception:
+            print('[INFO] - Cannot activate memory growth.')
+
+
 
 
 def get_env_cpy(env, initialize_new_model=False):
