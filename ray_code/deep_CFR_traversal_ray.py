@@ -19,7 +19,7 @@ def save_to_memory(type, player, info_state, iteration, values):
     # save this data structure, e.g. a dict (for instance each iteration gets its own file?)
 
 
-def deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players,
+def deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players, num_runners,
              runner_kwargs):
     """
     Parameters
@@ -45,33 +45,34 @@ def deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players,
     # initialize memories
     saves = []
     times = []
-    runners = [Traversal_Runner.remote(env_str, **runner_kwargs) for i in range(num_traversals)]
+    runners = [Traversal_Runner.remote(env_str, **runner_kwargs) for i in range(num_runners)]
 
     for t in range(CFR_iterations):
         for p in range(num_players):
-            # for k in range(num_traversals):
-            t1 = time.time()
+            for k in range(num_traversals):
+                # for k in range(num_traversals):
+                t1 = time.time()
 
-            # collect data from env via MonteCarlo style external sampling
+                # collect data from env via MonteCarlo style external sampling
 
-            futures = [runner.traverse.remote(history=[],
-                                              traverser=p,
-                                              CFR_iteration=t,
-                                              action='first') for runner in runners]
-            while futures:
-                ids, futures = ray.wait(futures)
-                # do additional stuff, like saving while other still sample
+                futures = [runner.traverse.remote(history=[],
+                                                  traverser=p,
+                                                  CFR_iteration=t,
+                                                  action='first') for runner in runners]
+                while futures:
+                    ids, futures = ray.wait(futures)
+                    # do additional stuff, like saving while other still sample
 
-            futures = [runner.get_counter.remote() for runner in runners]
-            while futures:
-                ids, futures = ray.wait(futures)
+                futures = [runner.get_counter.remote() for runner in runners]
+                while futures:
+                    ids, futures = ray.wait(futures)
 
-            counter = [ray.get(counter) for counter in ids]
+                counter = [ray.get(counter) for counter in ids]
 
-            # fancy output and stats stuff
-            dt = time.time() - t1
-            times.append(dt)
-            saves.extend(counter)
+                # fancy output and stats stuff
+                dt = time.time() - t1
+                times.append(dt)
+                saves.extend(counter)
 
         print(f"[CFR_iteration - {t} - d_t: {np.sum(times[-2:]):.4f}s, total_t: {np.sum(times):.4f}s, n_saved: {np.sum(saves[-2:])}, total_saved: {np.sum(saves)}")
 

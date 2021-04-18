@@ -18,8 +18,10 @@ activate_memory_growth(cpu = True)
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 4
-CFR_iterations = 6
+num_runners = 10
+num_traversals = 100
+CFR_iterations = 1
+
 
 # Set agent
 agent_fct = TensorflowAgent
@@ -60,8 +62,10 @@ config_dict = {'num_players': num_players,
 
 # initialize value_networks
 model_save_paths = [f'value_model_p_{i}' for i in range(num_players)]
+
 cfr_models = [get_DeepCFR_model(output_dim, n_cards, max_bet_number, n_actions)
               for _ in range(num_players)]
+              
 saves = [model.save(fn) for fn, model in zip(model_save_paths, cfr_models)]
 
 agents = [agent_fct(p) for p in model_save_paths]
@@ -73,7 +77,8 @@ runner_kwargs = {'model_save_paths': model_save_paths,
                  'config_dict': config_dict,
                  'max_bet_number': max_bet_number}
 
+
 # 3.
 # execution loop
-deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players,
+deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players, num_runners,
          runner_kwargs)
