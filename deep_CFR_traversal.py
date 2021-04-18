@@ -239,8 +239,8 @@ def deep_CFR(CFR_iterations, num_traversals, num_players):
 
     #env.register_agents([TensorflowAgent(f'test_model_{i}') for i in range(2)]) # 2 because two players
 
-    StrategyWriter = MemoryWriter(max_size = 1000, vector_length = 14, flatten_func = flatten_data_for_memory, file_name = "strategy_memory.h5")
-    AdvantageWriter = MemoryWriter(max_size = 1000, vector_length = 14, flatten_func = flatten_data_for_memory, file_name ="advantage_memory.h5")
+    StrategyWriter = MemoryWriter(max_size = 100_000, vector_length = 14, flatten_func = flatten_data_for_memory, file_name = "strategy_memory.h5")
+    AdvantageWriter = MemoryWriter(max_size = 100_000, vector_length = 14, flatten_func = flatten_data_for_memory, file_name ="advantage_memory.h5")
 
     for t in range(CFR_iterations):
 
@@ -264,12 +264,13 @@ def deep_CFR(CFR_iterations, num_traversals, num_players):
 
                 # write to disk every 30_000 info_states
                 if len(advantage_memory) > 100:
-                    print("save")
                     AdvantageWriter.save_to_memory(advantage_memory)
+                    advantage_memory = []
 
                 if len(strategy_memory) > 100:
-                    print("save")
                     StrategyWriter.save_to_memory(strategy_memory)
+                    strategy_memory = []
+
             print("players switch")
 
             # initialize new value network (if not first iteration) and train with val_mem_p
@@ -374,7 +375,6 @@ def traverse(env, obs, history, traverser, CFR_iteration):
 
             history_cpy.append(a) # add bet to bet history
 
-
             traverser_payoff = traverse( env_cpy, obs, history_cpy, traverser, CFR_iteration)
             values.append(traverser_payoff)
 
@@ -383,7 +383,8 @@ def traverse(env, obs, history, traverser, CFR_iteration):
         # 3.
         # use returned payoff for advantage/regret computation
         advantages = []
-        for a in range(len(strategy)):
+
+        for a in range(len(strategy.numpy()[0])):
             # compute advantages of each action
             advantages.append(values[a] - np.sum(strategy.numpy()[0] * np.array(values)))
 
@@ -421,8 +422,7 @@ def traverse(env, obs, history, traverser, CFR_iteration):
             cards.append(tensor.numpy())
         bet_hist = info_state[1].numpy()
 
-
-        strategy_memory.append(([cards, bet_hist], CFR_iteration, strategy.numpy()))
+        strategy_memory.append(([cards, bet_hist], CFR_iteration, strategy.numpy()[0]))
         # 3.
         # copy env and take action according to action_probabilities
         dist = tfp.distributions.Categorical(probs = strategy.numpy())
@@ -439,7 +439,7 @@ def traverse(env, obs, history, traverser, CFR_iteration):
 # create environment
 
 CFR_iterations = 1
-num_traversals = 1_000
+num_traversals = 10_000
 num_players = 2
 
 strategy_memory = []
