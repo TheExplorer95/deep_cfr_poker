@@ -1,27 +1,32 @@
 import os; os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import logging
+import psutil
 import ray
 from utils_ray import activate_memory_growth
-from deep_CFR_traversal_ray import deep_CFR
+from deep_CFR_traversal_ray import Coordinator
 from Tensorflow_Model import get_DeepCFR_model
 from PokerAgent import TensorflowAgent
+from memory_utils import flatten_data_for_memory
 
 
 # ------------------- initialization stuff -------------------------------
 # for ray backend
+num_cpus = 12#psutil.cpu_count(logical=False)
 ray.init(logging_level=logging.INFO)
 
 # might be impoortant for model reinitialization during traversal
-activate_memory_growth(cpu = True)
+activate_memory_growth(cpu=False)
 
 
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_runners = 10
-num_traversals = 100
-CFR_iterations = 1
+num_traversals = 12_800
+CFR_iterations = 8
 
+if not num_traversals > num_cpus:
+    # need less runners
+    num_cpus = num_traversals
 
 # Set agent
 agent_fct = TensorflowAgent
@@ -31,11 +36,11 @@ env_str = 'limit_easyHoldem-v0'
 num_players = 2
 num_streets = 2
 num_raises = 3
-n_actions = 5
-n_cards = [2, 3]
+num_actions = 5
+num_cards = [2, 3]
 
-n_community_cards = [0] + n_cards[1:]
-n_cards_for_hand = min(5, sum(n_cards))
+n_community_cards = [0] + num_cards[1:]
+n_cards_for_hand = min(5, sum(num_cards))
 max_bet_number = num_players * num_streets * num_raises
 
 output_dim = 256  # model for card embeddings
@@ -49,7 +54,7 @@ config_dict = {'num_players': num_players,
                'num_raises': num_raises,
                'num_suits': 4,
                'num_ranks': 13,
-               'num_hole_cards': n_cards[0],
+               'num_hole_cards': num_cards[0],
                'mandatory_num_hole_cards': 0,
                'num_community_cards': n_community_cards,
                'start_stack': 1_000_000,
@@ -63,9 +68,9 @@ config_dict = {'num_players': num_players,
 # initialize value_networks
 model_save_paths = [f'value_model_p_{i}' for i in range(num_players)]
 
-cfr_models = [get_DeepCFR_model(output_dim, n_cards, max_bet_number, n_actions)
+cfr_models = [get_DeepCFR_model(output_dim, num_cards, max_bet_number, num_actions)
               for _ in range(num_players)]
-              
+
 saves = [model.save(fn) for fn, model in zip(model_save_paths, cfr_models)]
 
 agents = [agent_fct(p) for p in model_save_paths]
@@ -78,7 +83,14 @@ runner_kwargs = {'model_save_paths': model_save_paths,
                  'max_bet_number': max_bet_number}
 
 
+vector_length = sum(num_cards) + max_bet_number + num_actions + 1
+
 # 3.
 # execution loop
-deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players, num_runners,
-         runner_kwargs)
+trainer = Coordinator(memory_buffer_size=5_000,
+                      reservoir_size=10_000_000,
+                      vector_length=vector_length,
+                      flatten_func=flatten_data_for_memory,
+                      memory_dir='memories/')
+trainer.deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players,
+                 runner_kwargs, num_runners=num_cpus)

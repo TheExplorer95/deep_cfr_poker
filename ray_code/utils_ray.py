@@ -5,20 +5,22 @@ import gym
 import os
 
 
-def activate_memory_growth(cpu = True):
-    
+def activate_memory_growth(cpu: bool):
+    """
+    Sets the desired device for Tensorflow computations
+    """
     if cpu:
         os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+        print('[INFO] - CPU only computations activated.')
     # allows for GPU memory growth
 
     else:
         physical_devices = tf.config.list_physical_devices('GPU')
         try:
             tf.config.experimental.set_memory_growth(physical_devices[0], True)
+            print('[INFO] - Models trained on GPU, with memory growth activated.')
         except Exception:
-            print('[INFO] - Cannot activate memory growth.')
-
-
+            print('[INFO] - Cannot activate memory growth, now this program uses all the available GPU memory.')
 
 
 def get_env_cpy(env, initialize_new_model=False):
