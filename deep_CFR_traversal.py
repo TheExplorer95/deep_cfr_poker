@@ -253,6 +253,8 @@ def deep_CFR(CFR_iterations, num_traversals, num_players):
 
             for k in range(num_traversals):
                 # collect data from env via external sampling
+                if not k%1000:
+                    print(f"{k} completed")
                 obs = env.reset()
                 history = []
 
@@ -263,11 +265,11 @@ def deep_CFR(CFR_iterations, num_traversals, num_players):
 
 
                 # write to disk every 30_000 info_states
-                if len(advantage_memory) > 100:
+                if len(advantage_memory) > 10000:
                     AdvantageWriter.save_to_memory(advantage_memory)
                     advantage_memory = []
 
-                if len(strategy_memory) > 100:
+                if len(strategy_memory) > 10000:
                     StrategyWriter.save_to_memory(strategy_memory)
                     strategy_memory = []
 
