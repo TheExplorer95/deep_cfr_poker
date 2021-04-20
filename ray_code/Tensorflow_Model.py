@@ -48,7 +48,45 @@ def get_embedding_model(output_dim, num_cards):
     return model
 
 
-def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions):
+loss_tracker = tf.keras.metrics.Mean(name="loss")
+class CustomModel(tf.keras.Model):
+
+    def train_step(self, data):
+        if len(data)== 4:
+            hole_cards, bets, iterations, targets = data
+            network_input = [[hole_cards],bets]
+        elif len(data) ==5:
+            hole_cards, flop_cards, bets, iterations, targets = data
+            network_input = [[hole_cards, flop_cards],bets]
+
+        with tf.GradientTape() as tape:
+            predictions = self(network_input)
+
+            loss = tf.reduce_mean(iterations * tf.reduce_sum((targets - predictions)**2, axis = -1), axis=None)
+
+        gradients = tape.gradient(loss, self.trainable_variables)
+
+
+        gradients = [tf.clip_by_norm(g, 1.0)
+             for g in gradients]
+
+
+        # Applying the gradients on the model using the specified optimizer
+        self.optimizer.apply_gradients(
+            zip(gradients, self.trainable_variables)
+        )
+
+        # Let's update and return the training loss metric.
+        loss_tracker.update_state(loss)
+        return {"loss": loss_tracker.result()}
+
+    @property
+    def metrics(self):
+        # We need to list our metrics here so the `reset_states()` can be
+        # called automatically.
+        return [loss_tracker]
+
+def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     """
     output_dim: dimensionality of embedding
     n_cards: a list of card numbers for each phase of the game (e.g. 2 preflop, 3 flop)
@@ -57,10 +95,8 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions):
     """
 
     # define inputs
-    cards = [tf.keras.Input([n,]) for n in n_cards]
-    bets = tf.keras.Input([n_bets,])
-
-    ### define layers
+    cards = [tf.keras.Input([n,], name = f"cards{i}") for i,n in enumerate(n_cards)]
+    bets = tf.keras.Input([n_bets], name = "bets")
 
     # embedding layer for each card type (pre-flop, flop, turn, river)
     output_dims = [output_dim for _ in range(len(n_cards))]
@@ -79,7 +115,8 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions):
     comb2 = tf.keras.layers.Dense(output_dim)
     comb3 = tf.keras.layers.Dense(output_dim)
 
-    action_head = tf.keras.layers.Dense(n_actions)
+    action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
+    value=-5))
 
 
     # card branch
@@ -102,17 +139,19 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions):
 
     # combine bet history and card embedding branches
     z = tf.concat([x,y],axis=-1)
-    z = comb1(z)
+    z = tf.nn.relu(comb1(z))
     z = tf.nn.relu(comb2(z) + z)
     z = tf.nn.relu(comb3(z) + z)
 
     # normalize (needed because of bet sizes)
     z = (z - tf.math.reduce_mean(z, axis=None)) / tf.math.reduce_std(z, axis=None)
 
-    output = action_head(z)
+    output = tf.nn.relu(action_head(z))
 
+    if strategy:
+        output = tf.nn.softmax(output)
 
-    DeepCFR_model = tf.keras.Model(inputs = [cards, bets], outputs = output)
+    DeepCFR_model = CustomModel(inputs = [cards, bets], outputs = output)
 
     return DeepCFR_model
 

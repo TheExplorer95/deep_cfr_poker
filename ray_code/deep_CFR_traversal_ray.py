@@ -10,15 +10,8 @@ from random import shuffle
 from copy import deepcopy, copy
 from utils_ray import get_info_state
 from memory_utils import MemoryWriter
-
-
-def save_to_memory(type, player, info_state, iteration, values):
-    """This function saves stuff to memory"""
-    pass
-
-    # TODO
-    # bring info state and values and iteration into a useful data structure
-    # save this data structure, e.g. a dict (for instance each iteration gets its own file?)
+from Tensorflow_Model import get_DeepCFR_model
+from training_utils import get_tf_dataset
 
 
 class Coordinator:
@@ -26,12 +19,18 @@ class Coordinator:
     Coordinates acquestion, saving and training for deep CFR.
     """
 
-    def __init__(self, memory_buffer_size, reservoir_size, vector_length, flatten_func, memory_dir):
+    def __init__(self, memory_buffer_size, reservoir_size, batch_size, vector_length, num_actions, num_batches, output_dim, n_cards, flatten_func, memory_dir):
         self.advantage_memory_0 = []
         self.advantage_memory_1 = []
         self.strategy_memory = []
-
+        self.reservoir_size = reservoir_size
+        self.batch_size = batch_size
+        self.num_actions = num_actions
+        self.num_batches = num_batches
+        self.output_dim = output_dim
+        self.n_cards = n_cards
         self.memory_buffer_size = memory_buffer_size
+        self.memory_dir = memory_dir
 
         self.initialize_memory_writers(reservoir_size, vector_length,
                                        flatten_func, memory_dir)
@@ -99,16 +98,8 @@ class Coordinator:
         """
         Parameters
         ----------
-        env : gym.env instance
+        env_str : gym.env ID string
               The game to optimize a strategy for.
-
-        val_net : tf.keras.model class
-                  The advantage value network used to approximate the regret value for action
-                  taken and actions possible.
-
-        strat_net : tf.keras.model class
-                    The strategy network used to approximate the average strategy at the end of
-                    each iteration of deepCFR
 
         CFR_iterations : int
                          Number of times deepCFR is applied.
@@ -122,7 +113,7 @@ class Coordinator:
         times = []
         runners = [Traversal_Runner.remote(i, env_str, **runner_kwargs) for i in range(num_runners)]
 
-        for t in range(CFR_iterations):
+        for t in range(1,CFR_iterations+1):
             for p in range(num_players):
 
                 t1 = time.time()
@@ -168,6 +159,48 @@ class Coordinator:
                 # (only used for prediction of the next regret values)
                 # train_val_net()
 
+                file_name = os.path.join(self.memory_dir, f"advantage_memory_{p}.h5")
+
+                if p == 0:
+                    num_infostates = min(self.advantage_writer_0.counter[1], self.reservoir_size)
+                elif p == 1:
+                    num_infostates = min(self.advantage_writer_1.counter[1], self.reservoir_size)
+
+                num_cards = sum(self.n_cards)
+                num_bets = runner_kwargs.get("max_bet_number")
+                num_actions = self.num_actions
+
+                train_ds = get_tf_dataset(file_name, self.batch_size, num_infostates, num_cards, num_bets, num_actions)
+
+                model = self.train_model_from_scratch(p, train_ds, self.n_cards, num_bets, num_actions, strategy=False)
+                # set model weights for player p
+                ray.get([runner.set_weights.remote(p, model.get_weights()) for runner in runners])
+
+        # train strategy network
+        file_name = os.path.join(self.memory_dir, "strategy_memory.h5")
+        num_infostates = min(self.strategy_writer.counter[1], self.reservoir_size)
+
+
+        train_ds = get_tf_dataset(file_name, self.batch_size, num_infostates, num_cards, num_bets, num_actions)
+        # hole_cards + flop
+
+
+        model = self.train_model_from_scratch(0, train_ds, self.n_cards, num_bets, num_actions, strategy=True)
+
+        file_name = os.path.join(self.memory_dir, "trained_strategy_network")
+        model.save(file_name)
+
+        return model
+
+    def train_model_from_scratch(self, player, dataset, n_cards, num_bets, num_actions, strategy):
+        # load model
+        model = get_DeepCFR_model(self.output_dim, n_cards, num_bets, num_actions, strategy)
+        #model = tf.keras.models.load_model("untrained_model", compile=False)
+
+        model.compile(optimizer = "adam")
+        model.fit(dataset.take(self.num_batches))
+        return model
+        #model.save(f'value_model_p_{player}')
             # train the strat_net with strat_mem
 
 
@@ -388,5 +421,7 @@ class Traversal_Runner:
             history.append(action)
             return (self.traverse(history, traverser, CFR_iteration, action)[0], self.ID)
 
+    def set_weights(self,player, weights):
+        self.env.agents[player].model.set_weights(weights)
     def get_counter(self):
         return self.counter
