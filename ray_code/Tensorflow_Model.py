@@ -115,8 +115,11 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     comb2 = tf.keras.layers.Dense(output_dim)
     comb3 = tf.keras.layers.Dense(output_dim)
 
-    action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
-    value=-5))
+    if not strategy:
+        action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
+        value=-5))
+    else:
+        action_head = tf.keras.layers.Dense(n_actions)
 
 
     # card branch
@@ -146,10 +149,12 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     # normalize (needed because of bet sizes)
     z = (z - tf.math.reduce_mean(z, axis=None)) / tf.math.reduce_std(z, axis=None)
 
-    output = tf.nn.relu(action_head(z))
 
-    if strategy:
-        output = tf.nn.softmax(output)
+    if not strategy:
+        output = tf.nn.relu(action_head(z))
+
+    else:
+        output = tf.nn.softmax(action_head(z))
 
     DeepCFR_model = CustomModel(inputs = [cards, bets], outputs = output)
 

@@ -21,8 +21,8 @@ activate_memory_growth(cpu=False)
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 16_000
-CFR_iterations = 8
+num_traversals = 16#_000
+CFR_iterations = 2#8
 
 if not num_traversals > num_cpus:
     # need less runners
@@ -92,7 +92,7 @@ trainer = Coordinator(memory_buffer_size=500,
                       batch_size = 10_000,
                       vector_length=vector_length,
                       num_actions = num_actions,
-                      num_batches = 1000,
+                      num_batches = 3,#1000,
                       output_dim = 256,
                       n_cards = num_cards,
                       flatten_func=flatten_data_for_memory,
