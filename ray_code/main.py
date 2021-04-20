@@ -74,8 +74,6 @@ cfr_models = [get_DeepCFR_model(output_dim, num_cards, max_bet_number, num_actio
 saves = [model.save(fn) for fn, model in zip(model_save_paths, cfr_models)]
 
 agents = [agent_fct(p) for p in model_save_paths]
-# Pass agents with internal policy/strategy to the env (dealer object)
-# env.register_agents([TensorflowAgent(f'test_model_{i}') for i in range(num_players)])
 
 runner_kwargs = {'model_save_paths': model_save_paths,
                  'agent_fct': agent_fct,

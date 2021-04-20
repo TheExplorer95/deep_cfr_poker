@@ -286,13 +286,6 @@ class Traversal_Runner:
         traverser : int()
             Heads up -> 0 or 1
 
-        val_net_p1 :
-
-        val_net_p2 :
-
-        val_mem_traverser :
-
-        strat_mem :
 
         CFR_iteration :
 
