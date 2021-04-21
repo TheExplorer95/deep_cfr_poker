@@ -21,8 +21,8 @@ activate_memory_growth(cpu=False)
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 10000#_000
-CFR_iterations = 100 #8
+num_traversals = 1000#_000
+CFR_iterations = 1 #8
 
 if not num_traversals > num_cpus:
     # need less runners
@@ -53,7 +53,7 @@ config_dict = {'num_players': num_players,
                'raise_sizes': "pot",
                'num_raises': num_raises,
                'num_suits': 1,
-               'num_ranks': 6,
+               'num_ranks': 4,
                'num_hole_cards': num_cards[0],
                'mandatory_num_hole_cards': 0,
                'num_community_cards': n_community_cards,
@@ -86,11 +86,11 @@ vector_length = sum(num_cards) + max_bet_number + num_actions + 1
 # 3.
 # execution loop
 trainer = Coordinator(memory_buffer_size=100,
-                      reservoir_size=40_000_000,
-                      batch_size = 1024,  # 512,
+                      reservoir_size=40_000,
+                      batch_size = 512,  # 512,
                       vector_length=vector_length,
                       num_actions = num_actions,
-                      num_batches = 10000,#1000,
+                      num_batches = 1000,#1000,
                       output_dim = 256,
                       n_cards = num_cards,
                       flatten_func=flatten_data_for_memory,

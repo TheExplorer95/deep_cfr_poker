@@ -18,7 +18,12 @@ def regret_matching(x):
         return tf.ones_like(x) * 1/x.shape[-1]
 
 
-
+class RegretMatching(tf.keras.layers.Layer):
+    def __init__(self):
+        super(RegretMatching, self).__init__()
+        self.regretmatch_func = regret_matching
+    def call(x):
+        return self.regretmatch_func(x)
 
 def get_embedding_model(output_dim, num_cards):
     input_dim_rank = 13
@@ -30,19 +35,19 @@ def get_embedding_model(output_dim, num_cards):
     # EMBEDDING MODEL (used for each group of cards)
 
     rank_embedding = tf.keras.layers.Embedding(
-        input_dim_rank, output_dim, embeddings_initializer='uniform',
+        input_dim_rank, output_dim, embeddings_initializer='ones',
         embeddings_regularizer=None, activity_regularizer=None,
         embeddings_constraint=None, mask_zero=False, input_length=None,
     )
 
     suit_embedding = tf.keras.layers.Embedding(
-        input_dim_suit, output_dim, embeddings_initializer='uniform',
+        input_dim_suit, output_dim, embeddings_initializer='ones',
         embeddings_regularizer=None, activity_regularizer=None,
         embeddings_constraint=None, mask_zero=False, input_length=None,
     )
 
     card_embedding = tf.keras.layers.Embedding(
-        input_dim_card, output_dim, embeddings_initializer='uniform',
+        input_dim_card, output_dim, embeddings_initializer='ones',
         embeddings_regularizer=None, activity_regularizer=None,
         embeddings_constraint=None, mask_zero=False, input_length=None,
     )
@@ -134,12 +139,13 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     comb2 = tf.keras.layers.Dense(output_dim)
     comb3 = tf.keras.layers.Dense(output_dim)
 
-    if not strategy:
-        action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
-        value=0))
-    else:
-        action_head = tf.keras.layers.Dense(n_actions)
-
+    # if not strategy:
+    #     action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
+    #     value=0))
+    # else:
+    #     action_head = tf.keras.layers.Dense(n_actions)
+    action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
+    value=-2))
 
     # card branch
     card_embs = []
@@ -174,7 +180,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
 
     if strategy:
 
-        output = tf.keras.layers.Lambda(lambda output: regret_matching(output))
+        output = RegretMatching()(output)#tf.keras.layers.Lambda(lambda output: regret_matching(output))
         #output = tf.nn.softmax(output)
 
     DeepCFR_model = CustomModel(inputs = [cards, bets], outputs = output)
