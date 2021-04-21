@@ -21,9 +21,9 @@ activate_memory_growth(cpu=False)
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 10000#_000
+num_traversals = 10#_000
 CFR_iterations = 8 #8
-number_batches = 4000
+number_batches = 40
 batch_size = 512
 reservoir_size = 40_000
 output_dim = 256  # model for card embeddings

@@ -12,6 +12,7 @@ from utils_ray import get_info_state
 from memory_utils import MemoryWriter
 from Tensorflow_Model import get_DeepCFR_model
 from training_utils import get_tf_dataset
+import tensorflow as tf
 
 
 class Coordinator:
@@ -199,7 +200,10 @@ class Coordinator:
 
         model.compile(optimizer = "adam")
         model.summary()
+        tf.print(model.layers)
         model.fit(dataset.take(self.num_batches))
+
+        tf.print(model.get_weights())
         return model
         #model.save(f'value_model_p_{player}')
             # train the strat_net with strat_mem
