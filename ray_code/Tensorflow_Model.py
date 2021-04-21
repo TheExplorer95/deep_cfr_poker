@@ -15,16 +15,26 @@ def regret_matching(x):
         # if only negative or zero regrets, output uniform probability
         return tf.ones_like(x) * 1/x.shape[-1]
 
-#@tf.function
-def normalize(z):
-    #tf.print(z.shape)
-    #tf.print(tf.math.reduce_mean(z,axis=None))
-    return (z - tf.math.reduce_mean(z, axis=None)) / tf.math.reduce_std(z, axis=None)
+# #@tf.function
+# def normalize(z):
+#     #tf.print(z.shape)
+#     #tf.print(tf.math.reduce_mean(z,axis=None))
+#     mean = tf.math.reduce_mean(z, axis=None)
+#     std = tf.math.reduce_std(z, axis=None)
+#     #print(z.shape)
+#     #z_shape = z.shape
+#     #mean = tf.broadcast_to(mean, z_shape, name=None)
+#     #std = tf.broadcast_to(std, z_shape, name=None)
+#     #tf.keras.utils.normalize(x, axis=-1, order=2)
+#     #z = tf.expand_dims(z, axis=-1)
+#     return (z - mean) / std
 
 class Normalize(tf.keras.layers.Layer):
     def __init__(self):
         super(Normalize, self).__init__()
-        self.normalize = normalize
+        self.normalize = tf.keras.layers.experimental.preprocessing.Normalization(mean = 0, variance = 1)
+        #self.normalize.set_weights([0, 1])
+
     def call(self,x):
         return self.normalize(x)
 
