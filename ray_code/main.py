@@ -16,8 +16,12 @@ ray.init(logging_level=logging.INFO)
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 10_0#00
-CFR_iterations = 20
+num_traversals = 10#_000
+CFR_iterations = 8 #8
+number_batches = 40
+batch_size = 512
+reservoir_size = 40_000
+output_dim = 256  # model for card embeddings
 
 # check if good to go
 if not num_traversals > num_cpus:
@@ -38,8 +42,6 @@ num_cards = [2, 3]
 n_community_cards = [0] + num_cards[1:]
 n_cards_for_hand = min(5, sum(num_cards))
 max_bet_number = num_players * num_streets * num_raises
-
-output_dim = 256  # size of latent dim for card embeddings
 
 # environment params dict
 config_dict = {'num_players': num_players,
@@ -73,14 +75,16 @@ runner_kwargs = {'model_save_paths': model_save_paths,
 
 # 3.
 # execution loop
-trainer = Coordinator(memory_buffer_size=10_000,
-                      reservoir_size=40_000_000,
-                      batch_size=10_000,
-                      vector_length=sum(num_cards) + max_bet_number + num_actions + 1,
-                      num_actions=num_actions,
-                      num_batches=4,#_000,
-                      output_dim=output_dim,
-                      n_cards=num_cards,
+
+
+trainer = Coordinator(memory_buffer_size=100,
+                      reservoir_size=reservoir_size,
+                      batch_size = batch_size,  # 512,
+                      vector_length=vector_length,
+                      num_actions = num_actions,
+                      num_batches = number_batches,#1000,
+                      output_dim = output_dim,
+                      n_cards = num_cards,
                       flatten_func=flatten_data_for_memory,
                       memory_dir='memories/')
 

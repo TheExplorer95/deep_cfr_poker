@@ -13,6 +13,7 @@ from utils_ray import get_info_state, print_obs
 from memory_utils import MemoryWriter
 from Tensorflow_Model import get_DeepCFR_model
 from training_utils import get_tf_dataset
+import tensorflow as tf
 
 
 class Coordinator:

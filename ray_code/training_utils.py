@@ -10,7 +10,7 @@ def get_tf_dataset(file_name, batch_size, num_infostates, num_cards, num_bets, n
     sum(n_cards) == 2 -> "hole_cards only"
     sum(n_cards) == 5 -> "hole_cards + flop"
     """
-
+    num_infostates -= 1
 
     def get_input_targets(stored_vector, num_cards):
 
