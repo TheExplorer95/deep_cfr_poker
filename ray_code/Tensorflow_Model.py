@@ -1,46 +1,39 @@
 import logging
 import tensorflow as tf; logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
-
+@tf.function
 def regret_matching(x):
     """
     Outputs action probabilities proportional to positive regrets
     """
     zeros = tf.zeros_like(x)
-
     x = tf.math.maximum(zeros, x)
 
     if tf.math.count_nonzero(x) > 0:
-
-        tf.print(x.shape)
-        tf.print(tf.reduce_sum(x,axis=-1))
-
         return x * (1/ tf.reduce_sum(x, axis=-1))
-
     else:
         # if only negative or zero regrets, output uniform probability
         return tf.ones_like(x) * 1/x.shape[-1]
 
+#@tf.function
+def normalize(z):
+    #tf.print(z.shape)
+    #tf.print(tf.math.reduce_mean(z,axis=None))
+    return (z - tf.math.reduce_mean(z, axis=None)) / tf.math.reduce_std(z, axis=None)
+
+class Normalize(tf.keras.layers.Layer):
+    def __init__(self):
+        super(Normalize, self).__init__()
+        self.normalize = normalize
+    def call(self,x):
+        return self.normalize(x)
 
 class RegretMatching(tf.keras.layers.Layer):
     def __init__(self):
         super(RegretMatching, self).__init__()
         self.regr_func = regret_matching
     def call(self,x):
-        zeros = tf.zeros_like(x)
-
-        x = tf.math.maximum(zeros, x)
-
-        if tf.math.count_nonzero(x) > 0:
-
-            #tf.print(x.shape)
-            #tf.print(tf.reduce_sum(x,axis=-1))
-
-            return x * (1/ tf.reduce_sum(x, axis=-1))
-
-        else:
-            # if only negative or zero regrets, output uniform probability
-            return tf.ones_like(x) * 1/x.shape[-1]
+        return self.regr_func(x)
 
 def get_embedding_model(output_dim, num_cards):
     input_dim_rank = 13
@@ -156,6 +149,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     comb1 = tf.keras.layers.Dense(output_dim)
     comb2 = tf.keras.layers.Dense(output_dim)
     comb3 = tf.keras.layers.Dense(output_dim)
+    norm = Normalize()
 
     # if not strategy:
     #     action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
@@ -190,7 +184,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     z = tf.nn.relu(comb3(z) + z)
 
     # normalize (needed because of bet sizes)
-    z = (z - tf.math.reduce_mean(z, axis=None)) / tf.math.reduce_std(z, axis=None)
+    z = norm(z) #normalize(z) #(z - tf.math.reduce_mean(z, axis=-1)) / tf.math.reduce_std(z, axis=-1)
 
 
 
