@@ -21,7 +21,7 @@ activate_memory_growth(cpu=False)
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 1000#_000
+num_traversals = 1#_000
 CFR_iterations = 1 #8
 
 if not num_traversals > num_cpus:
@@ -43,7 +43,7 @@ n_community_cards = [0] #+ num_cards[1:]
 n_cards_for_hand = min(5, sum(num_cards))
 max_bet_number = num_players * num_streets * num_raises
 
-output_dim = 256  # model for card embeddings
+output_dim = 32  # model for card embeddings
 
 # environment params dict
 config_dict = {'num_players': num_players,
@@ -90,8 +90,8 @@ trainer = Coordinator(memory_buffer_size=100,
                       batch_size = 512,  # 512,
                       vector_length=vector_length,
                       num_actions = num_actions,
-                      num_batches = 1000,#1000,
-                      output_dim = 256,
+                      num_batches = 10,#1000,
+                      output_dim = output_dim,
                       n_cards = num_cards,
                       flatten_func=flatten_data_for_memory,
                       memory_dir='memories/')

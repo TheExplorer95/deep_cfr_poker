@@ -11,7 +11,11 @@ def regret_matching(x):
     x = tf.math.maximum(zeros, x)
 
     if tf.math.count_nonzero(x) > 0:
-        return x/ tf.reduce_sum(x, axis=-1)
+
+        tf.print(x.shape)
+        tf.print(tf.reduce_sum(x,axis=-1))
+
+        return x * (1/ tf.reduce_sum(x, axis=-1))
 
     else:
         # if only negative or zero regrets, output uniform probability
@@ -21,9 +25,22 @@ def regret_matching(x):
 class RegretMatching(tf.keras.layers.Layer):
     def __init__(self):
         super(RegretMatching, self).__init__()
-        self.regretmatch_func = regret_matching
-    def call(x):
-        return self.regretmatch_func(x)
+        self.regr_func = regret_matching
+    def call(self,x):
+        zeros = tf.zeros_like(x)
+
+        x = tf.math.maximum(zeros, x)
+
+        if tf.math.count_nonzero(x) > 0:
+
+            #tf.print(x.shape)
+            #tf.print(tf.reduce_sum(x,axis=-1))
+
+            return x * (1/ tf.reduce_sum(x, axis=-1))
+
+        else:
+            # if only negative or zero regrets, output uniform probability
+            return tf.ones_like(x) * 1/x.shape[-1]
 
 def get_embedding_model(output_dim, num_cards):
     input_dim_rank = 13
@@ -35,19 +52,19 @@ def get_embedding_model(output_dim, num_cards):
     # EMBEDDING MODEL (used for each group of cards)
 
     rank_embedding = tf.keras.layers.Embedding(
-        input_dim_rank, output_dim, embeddings_initializer='ones',
+        input_dim_rank, output_dim, embeddings_initializer='uniform',
         embeddings_regularizer=None, activity_regularizer=None,
         embeddings_constraint=None, mask_zero=False, input_length=None,
     )
 
     suit_embedding = tf.keras.layers.Embedding(
-        input_dim_suit, output_dim, embeddings_initializer='ones',
+        input_dim_suit, output_dim, embeddings_initializer='uniform',
         embeddings_regularizer=None, activity_regularizer=None,
         embeddings_constraint=None, mask_zero=False, input_length=None,
     )
 
     card_embedding = tf.keras.layers.Embedding(
-        input_dim_card, output_dim, embeddings_initializer='ones',
+        input_dim_card, output_dim, embeddings_initializer='uniform',
         embeddings_regularizer=None, activity_regularizer=None,
         embeddings_constraint=None, mask_zero=False, input_length=None,
     )
@@ -128,6 +145,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     embedding_layers = [get_embedding_model(output_dim, num_cards) for num_cards,
                         num_output_dims in zip(n_cards, output_dims)]
 
+    regr_matching = RegretMatching()
     card1 = tf.keras.layers.Dense(output_dim, activation = "relu")
     card2 = tf.keras.layers.Dense(output_dim, activation = "relu")
     card3 = tf.keras.layers.Dense(output_dim, activation = "relu")
@@ -180,7 +198,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
 
     if strategy:
 
-        output = RegretMatching()(output)#tf.keras.layers.Lambda(lambda output: regret_matching(output))
+        output = regr_matching(output)              # tf.keras.layers.Lambda(lambda output: regret_matching(output)) #
         #output = tf.nn.softmax(output)
 
     DeepCFR_model = CustomModel(inputs = [cards, bets], outputs = output)
