@@ -5,10 +5,11 @@ import gym
 import os
 import numpy as np
 import ray
+import tensorflow as tf
 from random import shuffle
 # import tensorflow_probability as tfp
 from copy import deepcopy, copy
-from utils_ray import get_info_state
+from utils_ray import get_info_state, print_obs
 from memory_utils import MemoryWriter
 from Tensorflow_Model import get_DeepCFR_model
 from training_utils import get_tf_dataset
@@ -113,13 +114,15 @@ class Coordinator:
         times = []
         runners = [Traversal_Runner.remote(i, env_str, **runner_kwargs) for i in range(num_runners)]
 
-        for t in range(1,CFR_iterations+1):
+        for t in range(1, CFR_iterations+1):
+            print(f'\n--------------- CFR-Iteration {t} ---------------')
             for p in range(num_players):
 
                 t1 = time.time()
 
                 # collect data from env via MonteCarlo style external sampling
 
+                print(f'[CFR_iteration - {t}, player - {p}] - Started sampling.')
                 futures = [runner.traverse.remote(history=[],
                                                   traverser=p,
                                                   CFR_iteration=t,
@@ -142,6 +145,8 @@ class Coordinator:
                         traversal_counter += 1
                         futures.append(future)
                         num_saves.append(saves)
+                        if not traversal_counter % 500:
+                            print(f'[CFR_iteration - {t}, player - {p}] - {traversal_counter/num_traversals*100}% finished. - Files saved: adv_0 {self.advantage_writer_0.counter[1]}, adv_1 {self.advantage_writer_1.counter[1]}, strat {self.strategy_writer.counter[1]}')
 
                 # final cleanup of the runners and memories
                 for runner in runners:
@@ -152,8 +157,7 @@ class Coordinator:
                 dt = time.time() - t1
                 times.append(dt)
 
-                print(f'adv_0: {self.advantage_writer_0.counter[1]}, adv_1: {self.advantage_writer_1.counter[1]}, strat: {self.strategy_writer.counter[1]}')
-                print(f"[CFR_iteration - {t}, player - {p}] d_t: {times[-1]:.4f}s, total_t: {np.sum(times):.4f}s, info_state_saves: {np.sum(num_saves)}")
+                print(f"[CFR_iteration - {t}, player - {p}] - Finised with: d_t={times[-1]:.4f}s, total_t={np.sum(times):.4f}s - info_state_saves: {np.sum(num_saves)}")
 
                 # initialize new value network (if not first iteration) and train with val_mem_p
                 # (only used for prediction of the next regret values)
@@ -172,36 +176,41 @@ class Coordinator:
 
                 train_ds = get_tf_dataset(file_name, self.batch_size, num_infostates, num_cards, num_bets, num_actions)
 
-                model = self.train_model_from_scratch(p, train_ds, self.n_cards, num_bets, num_actions, strategy=False)
+                print(f'[CFR_iteration - {t}, player - {p}] - Started training the Advantage Network.')
+                model = self.train_model_from_scratch(p, train_ds, self.n_cards, num_bets, num_actions, strategy=False, CFR_iteration=t)
                 # set model weights for player p
                 ray.get([runner.set_weights.remote(p, model.get_weights()) for runner in runners])
 
+        print('\n[Info] - Started training the Strategy Network.')
         # train strategy network
         file_name = os.path.join(self.memory_dir, "strategy_memory.h5")
         num_infostates = min(self.strategy_writer.counter[1], self.reservoir_size)
 
-
         train_ds = get_tf_dataset(file_name, self.batch_size, num_infostates, num_cards, num_bets, num_actions)
-        # hole_cards + flop
+        model = self.train_model_from_scratch(0, train_ds, self.n_cards, num_bets, num_actions, strategy=True, CFR_iteration=t)
 
+        return model
 
-        model = self.train_model_from_scratch(0, train_ds, self.n_cards, num_bets, num_actions, strategy=True)
+    def train_model_from_scratch(self, player, dataset, n_cards, num_bets, num_actions, strategy, CFR_iteration):
+        # load model
+        model = get_DeepCFR_model(self.output_dim, n_cards, num_bets, num_actions, strategy)
+        # train model
+        if not strategy:
+            lr = 0.001 * 2 / CFR_iteration
+            architecture = f'advantage_network_player-{player}'
+        else:
+            lr = 0.001
+            architecture = 'strategy_network'
 
-        file_name = os.path.join(self.memory_dir, "trained_strategy_network")
+        opt = tf.keras.optimizers.Adam(lr)
+        model.compile(optimizer=opt)
+        history = model.fit(dataset.take(self.num_batches))
+
+        breakpoint()
+        file_name = os.path.join(self.memory_dir, f"trained_{architecture}")
         model.save(file_name)
 
         return model
-
-    def train_model_from_scratch(self, player, dataset, n_cards, num_bets, num_actions, strategy):
-        # load model
-        model = get_DeepCFR_model(self.output_dim, n_cards, num_bets, num_actions, strategy)
-        #model = tf.keras.models.load_model("untrained_model", compile=False)
-
-        model.compile(optimizer = "adam")
-        model.fit(dataset.take(self.num_batches))
-        return model
-        #model.save(f'value_model_p_{player}')
-            # train the strat_net with strat_mem
 
 
 @ray.remote
@@ -346,7 +355,8 @@ class Traversal_Runner:
             # his val_net via regret matching (used for weighting when calculating
             # the advantages)
             # call model on observation, no softmax
-            info_state = get_info_state(obs, history, self.max_bet_number, mode)
+            breakpoint()
+            info_state = get_info_state(obs, history, self.max_bet_number, mode, self.config_dict)
             strategy = self.env.agents[traverser].act(info_state, strategy=True)
 
             # 3.2
@@ -393,7 +403,7 @@ class Traversal_Runner:
             # compute strategy (next action) from the Infoset of the opponent and his
             # val_net via regret matching
             # call model on observation, no softmax
-            info_state = get_info_state(obs, history, self.max_bet_number, mode)
+            info_state = get_info_state(obs, history, self.max_bet_number, mode, self.config_dict)
             non_traverser = 1 - traverser
             strategy = self.env.agents[non_traverser].act(info_state, strategy=True)
 
@@ -414,7 +424,8 @@ class Traversal_Runner:
             history.append(action)
             return (self.traverse(history, traverser, CFR_iteration, action)[0], self.ID)
 
-    def set_weights(self,player, weights):
+    def set_weights(self, player, weights):
         self.env.agents[player].model.set_weights(weights)
+
     def get_counter(self):
         return self.counter

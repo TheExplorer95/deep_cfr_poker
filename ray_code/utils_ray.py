@@ -5,6 +5,29 @@ import gym
 import os
 
 
+def print_obs(obs, num_suits):
+    """
+    Only for heads up poker, assumes 2 player.
+    """
+    hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
+    community_cards = convert_cards_to_id(obs['community_cards'], num_suits)
+
+    print(f'active_player: {obs["action"]}')
+    print(obs['hole_cards'])
+    print(f'hole_cards: {hole_cards}')
+    print(obs['community_cards'])
+    print(f'community_cards: {community_cards}')
+    print('--------- game Stats ---------')
+    # print(f'player0_active: {obs["active"][0]}, player1_active: {obs["active"][1]}')  # active is inverse of done
+    # print(f'Dealer: {obs["button"]%2}')
+    print(f'pot: {obs["pot"]}')
+    # print(f'player0_stack: {obs["stacks"][0]}, player1_stack: {obs["stacks"][1]}')
+    print(f'player0_commit: {obs["street_commits"][0]}, player1_: {obs["street_commits"][1]}')
+    print('------ possible actions ------')
+    print(f'min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}')
+    print(f'call: {obs["call"]}', end='\n\n')
+
+
 def activate_memory_growth(cpu: bool):
     """
     Sets the desired device for Tensorflow computations
@@ -49,13 +72,13 @@ def get_env_cpy(env, initialize_new_model=False):
     return env_cpy
 
 
-def convert_cards_to_id(cards):
+def convert_cards_to_id(cards, num_suits):
     """
     Computes the unique card id for a clubs.cards type card. Assumes a card
-    deck of size 52 with ranks clubs (♣), diamonds (♦), hearts (♥) and
-    spades (♠), and suits 2, 3, 4, 5, 6, 7, 8, 9, 10, B, D, K, A.
-    0 = duce of clubs; 1 = duce of diamonds ...
-                                ... 50 = ace of hearts; 51 ace of spades
+    deck of size 52 with ranks spades (♠), hearts (♥), diamonds (♦), clubs (♣)
+    and suits A, K, D, B, 10, 9, 8, 7, 6, 5, 4, 3, 2.
+    0 = ace of spades; 1 = King of spades ...
+                                ... 50 = three of ; 51 = duce of clubs
     Parameters
     ----------
     cards: list(clubs.card)
@@ -67,9 +90,10 @@ def convert_cards_to_id(cards):
 
     # length of each card encoding (see class clubs.Card for reference)
     # prime = 8, bit_rank = 4
+    oneHot_rank = 13
     oneHot_suit = 4
-    oneHot_rank = 16
     oneHot_rank_offset = 3
+    begin_card_suit = oneHot_rank + oneHot_rank_offset
     encoding_length = 32
 
     converted_cards = []
@@ -79,19 +103,18 @@ def convert_cards_to_id(cards):
         # representation when not flipped)
         card_binary = '0'*(encoding_length-len(card._bin_str)) + card._bin_str
 
-        # extract rank and suit
-        card_suit = card_binary[oneHot_rank:oneHot_rank+oneHot_suit].find('1')
-        card_rank = card_binary[oneHot_rank_offset:oneHot_rank][::-1].find('1')
+        # extract rank and suit then extract
+        card_suit = card_binary[begin_card_suit:begin_card_suit+oneHot_suit][::-1].find('1')
+        card_rank = card_binary[oneHot_rank_offset:oneHot_rank_offset+oneHot_rank].find('1')
 
         # compute card id
-        card_id = card_rank * 4 + card_suit
-
+        card_id = card_rank * num_suits + card_suit
         converted_cards.append([card_id])
 
     return converted_cards
 
 
-def get_info_state(obs, history, max_bet_number, mode):
+def get_info_state(obs, history, max_bet_number, mode, env_config):
     """ Transforms the observation dictionary from clubs env and the history
         list to an info state (input to the ANN model)"""
 
@@ -100,7 +123,8 @@ def get_info_state(obs, history, max_bet_number, mode):
     c_cards = obs["community_cards"]
 
     # convert hole cards to indices.
-    hole_cards = [convert_cards_to_id(h_cards)]
+    hole_cards = [convert_cards_to_id(h_cards,
+                                      num_suits=env_config['num_suits'])]
 
     # convert community cards to indices and split into flop, turn, river
     c_cards_len = len(c_cards)
@@ -109,7 +133,8 @@ def get_info_state(obs, history, max_bet_number, mode):
     river = []
 
     if c_cards_len:
-        c_cards = convert_cards_to_id(c_cards)
+        c_cards = convert_cards_to_id(h_cards,
+                                      num_suits=env_config['num_suits'])
         if c_cards_len >= 3:
             flop_cards = c_cards[:3]
 
