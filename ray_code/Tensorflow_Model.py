@@ -90,6 +90,52 @@ def get_embedding_model(output_dim, num_cards):
 
     return model
 
+class CardEmbeddingLayer(tf.keras.layers.Layer):
+    def __init__(self, output_dim, n_cards):
+        super(CardEmbeddingLayer, self).__init__()
+
+        input_dim_rank = 13
+        input_dim_suit = 4
+        input_dim_card = 52
+
+        #cards_input = tf.keras.Input((num_cards,))
+
+        # EMBEDDING MODEL (used for each group of cards)
+
+        self.rank_embedding = tf.keras.layers.Embedding(
+            input_dim_rank, output_dim, embeddings_initializer='uniform',
+            embeddings_regularizer=None, activity_regularizer=None,
+            embeddings_constraint=None, mask_zero=False, input_length=None,
+        )
+
+        self.suit_embedding = tf.keras.layers.Embedding(
+            input_dim_suit, output_dim, embeddings_initializer='uniform',
+            embeddings_regularizer=None, activity_regularizer=None,
+            embeddings_constraint=None, mask_zero=False, input_length=None,
+        )
+
+        self.card_embedding = tf.keras.layers.Embedding(
+            input_dim_card, output_dim, embeddings_initializer='uniform',
+            embeddings_regularizer=None, activity_regularizer=None,
+            embeddings_constraint=None, mask_zero=False, input_length=None,
+        )
+        self.flatten = tf.keras.layers.Flatten()
+        # cards is a list of card indices (2 for preflop, 3 for flop, 1 for turn, 1 for river)
+        def call(cards_input):
+            x = self.flatten(cards_input)
+
+            valid = tf.cast(x >= tf.constant(0.), tf.float32)
+
+            x = tf.clip_by_value(x, clip_value_min = 0, clip_value_max = 1e6)
+
+            embs = self.card_embedding(x) + self.rank_embedding(x // 4) + self.suit_embedding(x%4)
+
+            embs = embs * tf.expand_dims(valid, axis=-1)
+
+            embs = tf.reduce_sum(embs , axis=1) # sum over num_cards card embeddings
+            tf.print(embs.shape)
+
+            return embs
 
 loss_tracker = tf.keras.metrics.Mean(name="loss")
 class CustomModel(tf.keras.Model):
@@ -144,7 +190,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
 
     # embedding layer for each card type (pre-flop, flop, turn, river)
     output_dims = [output_dim for _ in range(len(n_cards))]
-
+    # get_embedding_model
     embedding_layers = [get_embedding_model(output_dim, num_cards) for num_cards,
                         num_output_dims in zip(n_cards, output_dims)]
 
@@ -195,8 +241,6 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
 
     # normalize (needed because of bet sizes)
     z = norm(z) #normalize(z) #(z - tf.math.reduce_mean(z, axis=-1)) / tf.math.reduce_std(z, axis=-1)
-
-
 
     output = action_head(z)
 

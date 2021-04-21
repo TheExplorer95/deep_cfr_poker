@@ -198,6 +198,7 @@ class Coordinator:
         #model = tf.keras.models.load_model("untrained_model", compile=False)
 
         model.compile(optimizer = "adam")
+        model.summary()
         model.fit(dataset.take(self.num_batches))
         return model
         #model.save(f'value_model_p_{player}')
