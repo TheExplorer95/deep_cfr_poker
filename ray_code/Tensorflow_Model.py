@@ -2,6 +2,24 @@ import logging
 import tensorflow as tf; logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
 
+def regret_matching(x):
+    """
+    Outputs action probabilities proportional to positive regrets
+    """
+    zeros = tf.zeros_like(x)
+
+    x = tf.math.maximum(zeros, x)
+
+    if tf.math.count_nonzero(x) > 0:
+        return x/ tf.reduce_sum(x, axis=-1)
+
+    else:
+        # if only negative or zero regrets, output uniform probability
+        return tf.ones_like(x) * 1/x.shape[-1]
+
+
+
+
 def get_embedding_model(output_dim, num_cards):
     input_dim_rank = 13
     input_dim_suit = 4
@@ -55,6 +73,7 @@ class CustomModel(tf.keras.Model):
         if len(data)== 4:
             hole_cards, bets, iterations, targets = data
             network_input = [[hole_cards],bets]
+
         elif len(data) ==5:
             hole_cards, flop_cards, bets, iterations, targets = data
             network_input = [[hole_cards, flop_cards],bets]
@@ -117,7 +136,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
 
     if not strategy:
         action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
-        value=-5))
+        value=0))
     else:
         action_head = tf.keras.layers.Dense(n_actions)
 
@@ -150,11 +169,13 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     z = (z - tf.math.reduce_mean(z, axis=None)) / tf.math.reduce_std(z, axis=None)
 
 
-    if not strategy:
-        output = tf.nn.relu(action_head(z))
 
-    else:
-        output = tf.nn.softmax(action_head(z))
+    output = action_head(z)
+
+    if strategy:
+
+        output = tf.keras.layers.Lambda(lambda output: regret_matching(output))
+        #output = tf.nn.softmax(output)
 
     DeepCFR_model = CustomModel(inputs = [cards, bets], outputs = output)
 

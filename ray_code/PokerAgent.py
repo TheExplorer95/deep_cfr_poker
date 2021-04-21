@@ -1,6 +1,7 @@
 import tensorflow as tf
 from clubs_gym.agent.base import BaseAgent
 import tensorflow_probability as tfp
+from Tensorflow_Model import regret_matching
 
 class TensorflowAgent(BaseAgent):
     def __init__(self, model_path):
@@ -14,7 +15,7 @@ class TensorflowAgent(BaseAgent):
         action_advantages = self.model(info_state)
 
         ### Softmax on action action_advantages
-        action_probabilities = tf.nn.softmax(action_advantages)
+        action_probabilities = regret_matching(action_advantages)
 
         if strategy:
             return action_probabilities
