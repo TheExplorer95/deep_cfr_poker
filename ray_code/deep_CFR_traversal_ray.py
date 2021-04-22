@@ -123,12 +123,16 @@ class Coordinator:
         times = []
         runners = [Traversal_Runner.remote(i, env_str, **runner_kwargs) for i in range(num_runners)]
 
+
         cfr_start_itartion = 3
         # made changes here!!!!!
         print(f'[INFO] - !!! Starting with CFR-itaration {cfr_start_itartion} !!!')
         for t in range(cfr_start_itartion, CFR_iterations+1):
             print(f'\n--------------- CFR-Iteration {t} ---------------')
             for p in range(num_players):
+
+                # if t == 3 and p == 0:
+                #     num_traversals = num_traversals/2
 
                 t1 = time.time()
 
@@ -165,7 +169,7 @@ class Coordinator:
 
                             # prints and stats
                             traversal_counter += 1
-                            fancy_print.set_description(f'Memory entries: adv_0 {self.advantage_writer_0.counter[1]} adv_1 {self.advantage_writer_1.counter[1]} strat {self.strategy_writer.counter[1]} - Traversal progress ',
+                            fancy_print.set_description(f'Mem_count: adv_0 {self.advantage_writer_0.counter[1]} adv_1 {self.advantage_writer_1.counter[1]} strat {self.strategy_writer.counter[1]} - Travers_prog',
                                                         refresh=True)
                             fancy_print.update(1)
 
@@ -443,11 +447,14 @@ class Traversal_Runner:
 
             # 3.
             # get action (softmax) according to strategy
-            # dist = tfp.distributions.Categorical(probs=strategy.numpy())
-            # sampled_action = dist.sample().numpy()
             action = self.env.act(info_state)
+            max_action = 5
+
             if action > 0 and action < obs['call']:
-                action = obs['call']
+                action = min(int(obs['call']), max_action)
+            elif obs['call'] == 0 and obs['call'] < action and obs['min_raise'] > 0:
+                action = min(int(obs['min_raise']), max_action)
+
             history.append(action)
             return (self.traverse(history, traverser, CFR_iteration, action)[0], self.ID)
 

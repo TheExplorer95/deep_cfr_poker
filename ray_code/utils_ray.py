@@ -9,23 +9,21 @@ def print_obs(obs, num_suits):
     """
     Only for heads up poker, assumes 2 player.
     """
-    hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
-    community_cards = convert_cards_to_id(obs['community_cards'], num_suits)
-
-    print(f'active_player: {obs["action"]}')
-    print(obs['hole_cards'])
-    print(f'hole_cards: {hole_cards}')
-    print(obs['community_cards'])
-    print(f'community_cards: {community_cards}')
+    # hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
+    # community_cards = convert_cards_to_id(obs['community_cards'], num_suits)
     print('--------- game Stats ---------')
-    # print(f'player0_active: {obs["active"][0]}, player1_active: {obs["active"][1]}')  # active is inverse of done
-    # print(f'Dealer: {obs["button"]%2}')
-    print(f'pot: {obs["pot"]}')
-    # print(f'player0_stack: {obs["stacks"][0]}, player1_stack: {obs["stacks"][1]}')
-    print(f'player0_commit: {obs["street_commits"][0]}, player1_: {obs["street_commits"][1]}')
-    print('------ possible actions ------')
-    print(f'min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}')
-    print(f'call: {obs["call"]}', end='\n\n')
+    print(f'community_cards: {obs["community_cards"]}')
+    print(f'Dealer/Button: {obs["button"]%2}')
+    print(f'Pot: {obs["pot"]}')
+    print(f'Commit: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
+
+    if not obs['action'] == -1:
+        print(f"\n--------- player {obs['action']}'s turn ---------")
+        print(f'hole_cards: {obs["hole_cards"]}')
+        print(f'min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}')
+        print(f'call: {obs["call"]}', end='\n\n')
+    else:
+        print('\n[INFO] - End of the Game.')
 
 
 def activate_memory_growth(cpu: bool):

@@ -11,7 +11,7 @@ from memory_utils import flatten_data_for_memory
 
 # ------------------- initialization stuff -------------------------------
 # for ray backend
-num_cpus = 14 # psutil.cpu_count(logical=True)
+num_cpus = 13 # psutil.cpu_count(logical=True)
 ray.init(logging_level=logging.INFO)
 
 # -------------------- The Algorithm -------------------------------------
