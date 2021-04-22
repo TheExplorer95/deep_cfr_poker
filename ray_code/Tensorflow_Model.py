@@ -1,6 +1,7 @@
 import logging
 import tensorflow as tf; logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
+
 @tf.function
 def regret_matching(x):
     """
@@ -10,10 +11,11 @@ def regret_matching(x):
     x = tf.math.maximum(zeros, x)
 
     if tf.math.count_nonzero(x) > 0:
-        return x * (1/ tf.reduce_sum(x, axis=-1))
+        return x / tf.reduce_sum(x, axis=-1, keepdims=True)
     else:
         # if only negative or zero regrets, output uniform probability
-        return tf.ones_like(x) * 1/x.shape[-1]
+        return tf.ones_like(x) / x.shape[-1]
+
 
 # #@tf.function
 # def normalize(z):
@@ -29,6 +31,7 @@ def regret_matching(x):
 #     #z = tf.expand_dims(z, axis=-1)
 #     return (z - mean) / std
 
+
 class Normalize(tf.keras.layers.Layer):
     def __init__(self):
         super(Normalize, self).__init__()
@@ -38,12 +41,15 @@ class Normalize(tf.keras.layers.Layer):
     def call(self,x):
         return self.normalize(x)
 
+
 class RegretMatching(tf.keras.layers.Layer):
     def __init__(self):
         super(RegretMatching, self).__init__()
         self.regr_func = regret_matching
-    def call(self,x):
+
+    def call(self, x):
         return self.regr_func(x)
+
 
 def get_embedding_model(output_dim, num_cards):
     input_dim_rank = 13
@@ -84,11 +90,12 @@ def get_embedding_model(output_dim, num_cards):
 
     embs = embs * tf.expand_dims(valid, axis=-1)
 
-    embs = tf.reduce_sum(embs , axis=1) # sum over num_cards card embeddings
+    embs = tf.reduce_sum(embs, axis=1) # sum over num_cards card embeddings
 
     model = tf.keras.Model(cards_input, embs)
 
     return model
+
 
 class CardEmbeddingLayer(tf.keras.layers.Layer):
     def __init__(self, output_dim, n_cards):
@@ -121,6 +128,7 @@ class CardEmbeddingLayer(tf.keras.layers.Layer):
         )
         self.flatten = tf.keras.layers.Flatten()
         # cards is a list of card indices (2 for preflop, 3 for flop, 1 for turn, 1 for river)
+
         def call(cards_input):
             x = self.flatten(cards_input)
 
@@ -137,6 +145,7 @@ class CardEmbeddingLayer(tf.keras.layers.Layer):
 
             return embs
 
+
 loss_tracker = tf.keras.metrics.Mean(name="loss")
 class CustomModel(tf.keras.Model):
 
@@ -145,27 +154,19 @@ class CustomModel(tf.keras.Model):
             hole_cards, bets, iterations, targets = data
             network_input = [[hole_cards],bets]
 
-        elif len(data) ==5:
+        elif len(data) == 5:
             hole_cards, flop_cards, bets, iterations, targets = data
-            network_input = [[hole_cards, flop_cards],bets]
+            network_input = [[hole_cards, flop_cards], bets]
 
         with tf.GradientTape() as tape:
             predictions = self(network_input)
-
             loss = tf.reduce_mean(iterations * tf.reduce_sum((targets - predictions)**2, axis = -1), axis=None)
 
         gradients = tape.gradient(loss, self.trainable_variables)
-
-
-        gradients = [tf.clip_by_norm(g, 1.0)
-             for g in gradients]
-
+        gradients = [tf.clip_by_norm(g, 1.0) for g in gradients]
 
         # Applying the gradients on the model using the specified optimizer
-        self.optimizer.apply_gradients(
-            zip(gradients, self.trainable_variables)
-        )
-
+        self.optimizer.apply_gradients(zip(gradients, self.trainable_variables))
         # Let's update and return the training loss metric.
         loss_tracker.update_state(loss)
         return {"loss": loss_tracker.result()}
@@ -175,6 +176,7 @@ class CustomModel(tf.keras.Model):
         # We need to list our metrics here so the `reset_states()` can be
         # called automatically.
         return [loss_tracker]
+
 
 def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     """
@@ -191,7 +193,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     # embedding layer for each card type (pre-flop, flop, turn, river)
     output_dims = [output_dim for _ in range(len(n_cards))]
     # get_embedding_model
-    #CardEmbeddingLayer
+    # CardEmbeddingLayer
     embedding_layers = [get_embedding_model(output_dim, num_cards) for num_cards,
                         num_output_dims in zip(n_cards, output_dims)]
 
@@ -221,7 +223,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     for embedding, card_group in zip(embedding_layers, cards):
         card_embs.append(embedding(card_group))
 
-    card_embs = tf.concat(card_embs, axis= 1)
+    card_embs = tf.concat(card_embs, axis=1)
 
     x = card1(card_embs)
     x = card2(x)

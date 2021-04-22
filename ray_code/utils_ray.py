@@ -133,7 +133,7 @@ def get_info_state(obs, history, max_bet_number, mode, env_config):
     river = []
 
     if c_cards_len:
-        c_cards = convert_cards_to_id(h_cards,
+        c_cards = convert_cards_to_id(c_cards,
                                       num_suits=env_config['num_suits'])
         if c_cards_len >= 3:
             flop_cards = c_cards[:3]

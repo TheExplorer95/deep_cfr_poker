@@ -5,10 +5,12 @@ import gym
 import os
 import numpy as np
 import ray
+import pickle
 import tensorflow as tf
 from random import shuffle
 # import tensorflow_probability as tfp
 from copy import deepcopy, copy
+from tqdm import tqdm
 from utils_ray import get_info_state, print_obs
 from memory_utils import MemoryWriter
 from Tensorflow_Model import get_DeepCFR_model
@@ -21,7 +23,7 @@ class Coordinator:
     Coordinates acquestion, saving and training for deep CFR.
     """
 
-    def __init__(self, memory_buffer_size, reservoir_size, batch_size, vector_length, num_actions, num_batches, output_dim, n_cards, flatten_func, memory_dir):
+    def __init__(self, memory_buffer_size, reservoir_size, batch_size, vector_length, num_actions, num_batches, output_dim, n_cards, flatten_func, memory_dir, result_dir):
         self.advantage_memory_0 = []
         self.advantage_memory_1 = []
         self.strategy_memory = []
@@ -33,28 +35,35 @@ class Coordinator:
         self.n_cards = n_cards
         self.memory_buffer_size = memory_buffer_size
         self.memory_dir = memory_dir
+        self.result_dir = result_dir
 
+        self.check_dirs()
         self.initialize_memory_writers(reservoir_size, vector_length,
-                                       flatten_func, memory_dir)
+                                       flatten_func)
+
+    def check_dirs(self):
+        if not os.path.isdir(self.result_dir):
+            os.makedirs(self.result_dir)
+        if not os.path.isdir(self.memory_dir):
+            os.mkdir(self.memory_dir)
 
     def initialize_memory_writers(self, reservoir_size, vector_length,
-                                  flatten_func, memory_dir):
-        if not os.path.isdir(memory_dir):
-            os.mkdir(memory_dir)
+                                  flatten_func):
 
-        mem_fn = os.path.join(memory_dir, 'advantage_memory_0.h5')
+
+        mem_fn = os.path.join(self.memory_dir, 'advantage_memory_0.h5')
         self.advantage_writer_0 = MemoryWriter(reservoir_size,
                                                vector_length,
                                                flatten_func,
                                                mem_fn)
 
-        mem_fn = os.path.join(memory_dir, 'advantage_memory_1.h5')
+        mem_fn = os.path.join(self.memory_dir, 'advantage_memory_1.h5')
         self.advantage_writer_1 = MemoryWriter(reservoir_size,
                                                vector_length,
                                                flatten_func,
                                                mem_fn)
 
-        mem_fn = os.path.join(memory_dir, 'strategy_memory.h5')
+        mem_fn = os.path.join(self.memory_dir, 'strategy_memory.h5')
         self.strategy_writer = MemoryWriter(reservoir_size,
                                             vector_length,
                                             flatten_func,
@@ -111,11 +120,13 @@ class Coordinator:
         strat_net : tf.keras.model class
                     The trained strategy network."""
         # initialize memories
-        num_saves = []
         times = []
         runners = [Traversal_Runner.remote(i, env_str, **runner_kwargs) for i in range(num_runners)]
 
-        for t in range(1, CFR_iterations+1):
+        cfr_start_itartion = 3
+        # made changes here!!!!!
+        print(f'[INFO] - !!! Starting with CFR-itaration {cfr_start_itartion} !!!')
+        for t in range(cfr_start_itartion, CFR_iterations+1):
             print(f'\n--------------- CFR-Iteration {t} ---------------')
             for p in range(num_players):
 
@@ -123,31 +134,40 @@ class Coordinator:
 
                 # collect data from env via MonteCarlo style external sampling
 
-                print(f'[CFR_iteration - {t}, player - {p}] - Started sampling.')
+                print(f'[Payer - {p}] - Started sampling.')
                 futures = [runner.traverse.remote(history=[],
                                                   traverser=p,
                                                   CFR_iteration=t,
                                                   action='first') for runner in runners]
 
                 traversal_counter = num_runners  # have been already started
-                while futures:
-                    ids, futures = ray.wait(futures)
+                with tqdm(total=int(num_traversals), initial=traversal_counter,
+                          unit='traversals', desc='') as fancy_print:
 
-                    if traversal_counter < num_traversals:
-                        runner_ID = ray.get(ids[0])[1]
-                        saves = ray.get(runners[runner_ID].get_counter.remote())
-                        self.extract_data_from_runner(runners[runner_ID], p)
-                        self.save_memory_to_files(p)
-                        future = runners[runner_ID].traverse.remote(history=[],
-                                                                    traverser=p,
-                                                                    CFR_iteration=t,
-                                                                    action='first')
+                    while futures:
+                        ids, futures = ray.wait(futures)
 
-                        traversal_counter += 1
-                        futures.append(future)
-                        num_saves.append(saves)
-                        if not traversal_counter % 500:
-                            print(f'[CFR_iteration - {t}, player - {p}] - {traversal_counter/num_traversals*100}% finished. - Files saved: adv_0 {self.advantage_writer_0.counter[1]}, adv_1 {self.advantage_writer_1.counter[1]}, strat {self.strategy_writer.counter[1]}')
+                        # continues sending out runner until no traversals are left
+                        if traversal_counter < num_traversals:
+                            # get finised runner
+                            runner_ID = ray.get(ids[0])[1]
+
+                            # get data from runner
+                            self.extract_data_from_runner(runners[runner_ID], p)
+                            self.save_memory_to_files(p)
+
+                            # send out runner
+                            future = runners[runner_ID].traverse.remote(history=[],
+                                                                        traverser=p,
+                                                                        CFR_iteration=t,
+                                                                        action='first')
+                            futures.append(future)
+
+                            # prints and stats
+                            traversal_counter += 1
+                            fancy_print.set_description(f'Memory entries: adv_0 {self.advantage_writer_0.counter[1]} adv_1 {self.advantage_writer_1.counter[1]} strat {self.strategy_writer.counter[1]} - Traversal progress ',
+                                                        refresh=True)
+                            fancy_print.update(1)
 
                 # final cleanup of the runners and memories
                 for runner in runners:
@@ -158,7 +178,6 @@ class Coordinator:
                 dt = time.time() - t1
                 times.append(dt)
 
-                print(f"[CFR_iteration - {t}, player - {p}] - Finised with: d_t={times[-1]:.4f}s, total_t={np.sum(times):.4f}s - info_state_saves: {np.sum(num_saves)}")
 
                 # initialize new value network (if not first iteration) and train with val_mem_p
                 # (only used for prediction of the next regret values)
@@ -177,12 +196,12 @@ class Coordinator:
 
                 train_ds = get_tf_dataset(file_name, self.batch_size, num_infostates, num_cards, num_bets, num_actions)
 
-                print(f'[CFR_iteration - {t}, player - {p}] - Started training the Advantage Network.')
+                print(f'[Player - {p}] - Started training the Advantage Network.')
                 model = self.train_model_from_scratch(p, train_ds, self.n_cards, num_bets, num_actions, strategy=False, CFR_iteration=t)
                 # set model weights for player p
                 ray.get([runner.set_weights.remote(p, model.get_weights()) for runner in runners])
 
-        print('\n[Info] - Started training the Strategy Network.')
+        print('\n---------- Started training the Strategy Network ----------')
         # train strategy network
         file_name = os.path.join(self.memory_dir, "strategy_memory.h5")
         num_infostates = min(self.strategy_writer.counter[1], self.reservoir_size)
@@ -198,18 +217,24 @@ class Coordinator:
         # train model
         if not strategy:
             lr = 0.001 * 2 / CFR_iteration
-            architecture = f'advantage_network_player-{player}'
+            architecture = f'advantage-network_player-{player}'
         else:
             lr = 0.001
-            architecture = 'strategy_network'
+            architecture = 'strategy-network'
 
         opt = tf.keras.optimizers.Adam(lr)
         model.compile(optimizer=opt)
-        history = model.fit(dataset.take(self.num_batches))
 
-        breakpoint()
-        file_name = os.path.join(self.memory_dir, f"trained_{architecture}")
-        model.save(file_name)
+        history = model.fit(dataset.take(self.num_batches))
+        model_name = os.path.join(self.memory_dir, f"trained_{architecture}_CRF-iteration-{CFR_iteration}")
+        model.save(model_name)
+
+        # save loss
+        fn_loss = os.path.join(self.result_dir, f'{architecture}_CFR-iteration-{CFR_iteration}_lossData.pkl')
+        with open(fn_loss, 'wb') as f:
+            pickle.dump(history.history, f)
+
+        print(f'[INFO] - Successfully saved the model.')
 
         return model
 
@@ -224,7 +249,6 @@ class Traversal_Runner:
         self.ID = ID
         self.env_str = env_str
         self.config_dict = config_dict
-        self.counter = 0
         self.max_bet_number = max_bet_number
         self.strategy_memory = []
         self.advantage_memory = []
@@ -309,7 +333,6 @@ class Traversal_Runner:
         # 0.
         # set and get parameters
         if action == 'first':
-            self.counter = 0
             obs = self.env.reset()
 
             # randomize which player starts
@@ -356,9 +379,12 @@ class Traversal_Runner:
             # his val_net via regret matching (used for weighting when calculating
             # the advantages)
             # call model on observation, no softmax
-            breakpoint()
             info_state = get_info_state(obs, history, self.max_bet_number, mode, self.config_dict)
-            strategy = self.env.agents[traverser].act(info_state, strategy=True)
+
+            try:
+                strategy = self.env.agents[traverser].act(info_state, strategy=True)
+            except:
+                breakpoint()
 
             # 3.2
             # iterate over all actions and do traversals starting from each actions
@@ -390,7 +416,6 @@ class Traversal_Runner:
             bet_hist = info_state[1].numpy()
 
             self.advantage_memory.append(([cards, bet_hist], CFR_iteration, advantages))
-            self.counter += 1
 
             expected_infostate_value = np.sum(strategy.numpy()[0] * np.array(values))
             return (expected_infostate_value, self.ID)
@@ -415,18 +440,16 @@ class Traversal_Runner:
                 cards.append(tensor.numpy())
             bet_hist = info_state[1].numpy()
             self.strategy_memory.append(([cards, bet_hist], CFR_iteration, strategy.numpy()[0]))
-            self.counter += 1
 
             # 3.
             # get action (softmax) according to strategy
             # dist = tfp.distributions.Categorical(probs=strategy.numpy())
             # sampled_action = dist.sample().numpy()
             action = self.env.act(info_state)
+            if action > 0 and action < obs['call']:
+                action = obs['call']
             history.append(action)
             return (self.traverse(history, traverser, CFR_iteration, action)[0], self.ID)
 
     def set_weights(self, player, weights):
         self.env.agents[player].model.set_weights(weights)
-
-    def get_counter(self):
-        return self.counter
