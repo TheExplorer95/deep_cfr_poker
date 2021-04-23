@@ -70,7 +70,7 @@ if custom_model_save_paths is not None:
     model_save_paths = custom_model_save_paths
 else:
     model_save_paths = [f'value_model_p_{i}' for i in range(num_players)]
-    cfr_models = [get_DeepCFR_model(output_dim, num_cards, max_bet_number, num_actions)
+    cfr_models = [get_DeepCFR_model(output_dim, num_cards, max_bet_number, num_actions, zero_outputs = True)
                   for _ in range(num_players)]
 
     saves = [model.save(fn) for fn, model in zip(model_save_paths, cfr_models)]

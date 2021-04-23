@@ -17,21 +17,6 @@ def regret_matching(x):
         return tf.ones_like(x) / x.shape[-1]
 
 
-# #@tf.function
-# def normalize(z):
-#     #tf.print(z.shape)
-#     #tf.print(tf.math.reduce_mean(z,axis=None))
-#     mean = tf.math.reduce_mean(z, axis=None)
-#     std = tf.math.reduce_std(z, axis=None)
-#     #print(z.shape)
-#     #z_shape = z.shape
-#     #mean = tf.broadcast_to(mean, z_shape, name=None)
-#     #std = tf.broadcast_to(std, z_shape, name=None)
-#     #tf.keras.utils.normalize(x, axis=-1, order=2)
-#     #z = tf.expand_dims(z, axis=-1)
-#     return (z - mean) / std
-
-
 class Normalize(tf.keras.layers.Layer):
     def __init__(self):
         super(Normalize, self).__init__()
@@ -178,7 +163,7 @@ class CustomModel(tf.keras.Model):
         return [loss_tracker]
 
 
-def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
+def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False, zero_outputs = False):
     """
     output_dim: dimensionality of embedding
     n_cards: a list of card numbers for each phase of the game (e.g. 2 preflop, 3 flop)
@@ -215,8 +200,12 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False):
     #     value=0))
     # else:
     #     action_head = tf.keras.layers.Dense(n_actions)
+    if zero_outputs:
+        bias = -5
+    else:
+        bias = 0
     action_head = tf.keras.layers.Dense(n_actions, bias_initializer = tf.keras.initializers.Constant(
-    value=0))
+    value=bias))
 
     # card branch
     card_embs = []
