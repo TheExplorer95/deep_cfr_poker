@@ -1,11 +1,10 @@
-import random
 import tensorflow as tf
 from clubs_gym.agent.base import BaseAgent
 import tensorflow_probability as tfp
 from Tensorflow_Model import regret_matching
 
 
-class action_fct:
+class Bet_Fct:
     """
     Function that converts the action taken by the bot to the actual bet
     made.

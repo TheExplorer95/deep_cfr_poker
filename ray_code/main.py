@@ -5,19 +5,19 @@ import ray
 from utils_ray import activate_memory_growth; activate_memory_growth(cpu=False)
 from deep_CFR_traversal_ray import Coordinator
 from Tensorflow_Model import get_DeepCFR_model
-from PokerAgent import TensorflowAgent, action_fct
+from PokerAgent import TensorflowAgent, Bet_Fct
 from memory_utils import flatten_data_for_memory
 
 # ------------------- initialization stuff -------------------------------
 # for ray backend
-cpu_counts_for_work = 12
+cpu_counts_for_work = 4
 num_cpus = psutil.cpu_count(logical=True) - cpu_counts_for_work
 ray.init(logging_level=logging.INFO)
 
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 20_000
+num_traversals = 10_000
 CFR_start_itartion = 1
 CFR_iterations = 20
 number_batches = 4_000
@@ -25,9 +25,7 @@ batch_size = 512  # 10_000 testing now
 reservoir_size = 40_000_000
 output_dim = 256  # model for card embeddings
 
-# train_data = 44_000
-
-# check if good to go
+# check if num_cpus good to go
 if not num_traversals > num_cpus:
     # need less runners
     num_cpus = num_traversals
@@ -37,7 +35,7 @@ model_output_types = ['action', 'bet']
 model_type = model_output_types[0]
 
 agent_fct = TensorflowAgent
-action_fct = action_fct(model_type)
+bet_fct = Bet_Fct(model_type)
 
 # set agents strategy networks
 # None if trained from scratch
@@ -53,7 +51,7 @@ num_cards = [2, 3]
 
 n_community_cards = [0] + num_cards[1:]
 n_cards_for_hand = min(5, sum(num_cards))
-max_bet_number = num_players * num_streets * num_raises
+max_bet_number = num_streets * (num_raises + ((num_players-1)*2))
 
 # environment params dict
 config_dict = {'num_players': num_players,
@@ -87,7 +85,7 @@ runner_kwargs = {'model_save_paths': model_save_paths,
                  'agent_fct': agent_fct,
                  'config_dict': config_dict,
                  'max_bet_number': max_bet_number,
-                 'action_fct': action_fct}
+                 'bet_fct': bet_fct}
 
 # 3.
 # execution loop

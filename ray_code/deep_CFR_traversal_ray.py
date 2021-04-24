@@ -319,11 +319,11 @@ class Traversal_Runner:
     agent_fct : function
         Creates the Agent for the Poker environment.
 
-    action_fct : instance of action_fct
+    bet_fct : instance of bet_fct
         Used for adjusting the model output for the environment input.
     """
 
-    def __init__(self, ID, env_str, config_dict, max_bet_number, action_fct,
+    def __init__(self, ID, env_str, config_dict, max_bet_number, bet_fct,
                  model_save_paths=None, agent_fct=None):
         self.ID = ID
         self.env_str = env_str
@@ -331,7 +331,7 @@ class Traversal_Runner:
         self.max_bet_number = max_bet_number
         self.strategy_memory = []
         self.advantage_memory = []
-        self.action_fct = action_fct
+        self.bet_fct = bet_fct
         self.create_env(model_save_paths, agent_fct)
 
     def create_env(self, model_save_paths, agent_fct):
@@ -369,8 +369,6 @@ class Traversal_Runner:
 
         # 3. create reference to the original agents
         env_cpy.register_agents(copy(orig_env.agents))
-
-        env_cpy.reset()
 
         return env_cpy
 
@@ -432,9 +430,6 @@ class Traversal_Runner:
         if action == 'first':
             obs = self.env.reset()
 
-            # randomize which player starts
-            if random.randint(0, 1):
-                obs = self.env.reset()
         else:
             # take given action within the environment
             obs, reward, done, _ = self.env.step(int(action))
@@ -480,11 +475,8 @@ class Traversal_Runner:
                 # create env copy for traversal
                 self.env = self.create_env_cpy(orig_env)
                 history_cpy = deepcopy(history)
-                bet = self.action_fct(action_index, obs)
+                bet = self.bet_fct(action_index, obs)
                 history_cpy.append(bet)
-
-                if len(history_cpy) == 13:
-                    breakpoint()
 
                 # get payoff for given action/bet
                 traverser_payoff = self.traverse(history_cpy, traverser, CFR_iteration, bet)[0]
@@ -533,10 +525,7 @@ class Traversal_Runner:
             # get action according to strategy
 
             action = self.env.act(info_state)
-            bet = self.action_fct(action, obs)
+            bet = self.bet_fct(action, obs)
             history.append(bet)
-
-            if len(history) == 13:
-                breakpoint()
 
             return (self.traverse(history, traverser, CFR_iteration, bet)[0], self.ID)
