@@ -11,17 +11,16 @@ def print_obs(obs, num_suits):
     """
     # hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
     # community_cards = convert_cards_to_id(obs['community_cards'], num_suits)
-    print('--------- game Stats ---------')
+    print('------------------- game Stats -------------------')
     print(f'community_cards: {obs["community_cards"]}')
     print(f'Dealer/Button: {obs["button"]%2}')
     print(f'Pot: {obs["pot"]}')
-    print(f'Commit: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
+    print(f'Commits: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
 
     if not obs['action'] == -1:
-        print(f"\n--------- player {obs['action']}'s turn ---------")
+        print(f"\n---------------- player {obs['action']}'s turn ----------------")
         print(f'hole_cards: {obs["hole_cards"]}')
-        print(f'min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}')
-        print(f'call: {obs["call"]}', end='\n\n')
+        print(f'call: {obs["call"]}, min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}', end='\n\n')
     else:
         print('\n[INFO] - End of the Game.')
 
