@@ -11,11 +11,10 @@ from random import shuffle
 # import tensorflow_probability as tfp
 from copy import deepcopy, copy
 from tqdm import tqdm
-from utils_ray import get_info_state, print_obs
+from utils_ray import get_info_state
 from memory_utils import MemoryWriter
 from Tensorflow_Model import get_DeepCFR_model
 from training_utils import get_tf_dataset
-import tensorflow as tf
 
 
 class Coordinator:
@@ -27,6 +26,7 @@ class Coordinator:
         self.advantage_memory_0 = []
         self.advantage_memory_1 = []
         self.strategy_memory = []
+        self.bet_memory = []
         self.reservoir_size = reservoir_size
         self.batch_size = batch_size
         self.num_actions = num_actions
@@ -50,7 +50,6 @@ class Coordinator:
     def initialize_memory_writers(self, reservoir_size, vector_length,
                                   flatten_func):
 
-
         mem_fn = os.path.join(self.memory_dir, 'advantage_memory_0.h5')
         self.advantage_writer_0 = MemoryWriter(reservoir_size,
                                                vector_length,
@@ -70,7 +69,7 @@ class Coordinator:
                                             mem_fn)
 
     def extract_data_from_runner(self, runner, player):
-        adv, strat = ray.get(runner.get_memories.remote())
+        adv, strat, bet = ray.get(runner.get_memories.remote())
         if player == 0:
             self.advantage_memory_0.extend(adv)
         elif player == 1:
@@ -79,6 +78,7 @@ class Coordinator:
             print('[ERROR] - Player {player}, is not implemented.')
 
         self.strategy_memory.extend(strat)
+        self.bet_memory.extend(bet)
 
     def save_memory_to_files(self, player, force_save=False):
         if player == 0:
@@ -104,7 +104,7 @@ class Coordinator:
         else:
             print('[ERROR] - Player {player}, is not implemented.')
 
-    def deep_CFR(self, env_str, config_dict, CFR_iterations, num_traversals, num_players,
+    def deep_CFR(self, env_str, config_dict, CFR_start_itartion, CFR_iterations, num_traversals, num_players,
                  runner_kwargs, num_runners):
         """
         Parameters
@@ -123,21 +123,19 @@ class Coordinator:
         times = []
         runners = [Traversal_Runner.remote(i, env_str, **runner_kwargs) for i in range(num_runners)]
 
-
-        cfr_start_itartion = 3
-        # made changes here!!!!!
-        print(f'[INFO] - !!! Starting with CFR-itaration {cfr_start_itartion} !!!')
-        for t in range(cfr_start_itartion, CFR_iterations+1):
-            print(f'\n--------------- CFR-Iteration {t} ---------------')
+        print(f'[INFO] - Starting with CFR-itaration {CFR_start_itartion}.')
+        for t in range(CFR_start_itartion, CFR_iterations+1):
+            print(f'\n------------------------- CFR-Iteration {t} -------------------------')
             for p in range(num_players):
 
                 # if t == 3 and p == 0:
-                #     num_traversals = num_traversals/2
+                #     continue
+                # elif t == 3 and p == 1:
+                #     num_traversals = 8409
 
                 t1 = time.time()
 
                 # collect data from env via MonteCarlo style external sampling
-
                 print(f'[Payer - {p}] - Started sampling.')
                 futures = [runner.traverse.remote(history=[],
                                                   traverser=p,
@@ -173,6 +171,11 @@ class Coordinator:
                                                         refresh=True)
                             fancy_print.update(1)
 
+                            if not traversal_counter % (num_traversals//5):
+                                self.print_bet_mem()
+
+                print(f'[Payer - {p}] - Finished sampling - Mem_count: adv_0 {self.advantage_writer_0.counter[1]} adv_1 {self.advantage_writer_1.counter[1]} strat {self.strategy_writer.counter[1]}.')
+
                 # final cleanup of the runners and memories
                 for runner in runners:
                     self.extract_data_from_runner(runner, p)
@@ -181,7 +184,6 @@ class Coordinator:
                 # fancy output and stats stuff
                 dt = time.time() - t1
                 times.append(dt)
-
 
                 # initialize new value network (if not first iteration) and train with val_mem_p
                 # (only used for prediction of the next regret values)
@@ -205,8 +207,7 @@ class Coordinator:
                 # set model weights for player p
                 ray.get([runner.set_weights.remote(p, model.get_weights()) for runner in runners])
 
-        print('\n---------- Started training the Strategy Network ----------')
-        # train strategy network
+        print('\n------------------------- Started training the Strategy Network -------------------------')
         file_name = os.path.join(self.memory_dir, "strategy_memory.h5")
         num_infostates = min(self.strategy_writer.counter[1], self.reservoir_size)
 
@@ -214,6 +215,18 @@ class Coordinator:
         model = self.train_model_from_scratch(0, train_ds, self.n_cards, num_bets, num_actions, strategy=True, CFR_iteration=t)
 
         return model
+
+    def print_bet_mem(self):
+        counts = float(len(self.bet_memory))
+        if counts == 0:
+            counts = 1
+
+        action_0 = self.bet_memory.count(0) / counts * 100
+        action_1 = self.bet_memory.count(1) / counts * 100
+        action_2 = self.bet_memory.count(2) / counts * 100
+        action_3 = self.bet_memory.count(3) / counts * 100
+
+        print(f'action_probs:   fold/check {action_0:.2f}   check/call {action_1:.2f}   min_raise {action_2:.2f}   max_raise {action_3:.2f}', end='\n\n')
 
     def train_model_from_scratch(self, player, dataset, n_cards, num_bets, num_actions, strategy, CFR_iteration):
         # load model
@@ -248,12 +261,13 @@ class Traversal_Runner:
     """
     Used for the distributed sampling of CFR_data
     """
-    def __init__(self, ID, env_str, config_dict, max_bet_number,
+    def __init__(self, ID, env_str, config_dict, max_bet_number, max_bet_agent,
                  model_save_paths=None, agent_fct=None):
         self.ID = ID
         self.env_str = env_str
         self.config_dict = config_dict
         self.max_bet_number = max_bet_number
+        self.max_bet_agent = max_bet_agent
         self.strategy_memory = []
         self.advantage_memory = []
         self.create_env(model_save_paths, agent_fct)
@@ -302,14 +316,43 @@ class Traversal_Runner:
         self.advantage_memory = []
         self.strategy_memory = []
 
-        return advantage, strategy
+        bet_memory = []
+        for i in range(2):
+            bet_memory.extend(self.env.agents[i].bet_history)
+            self.env.agents[i].bet_history = []
+
+        return advantage, strategy, bet_memory
+
+    def action_func(self, action, obs):
+        # 0 = Fold, 1 = Call, 2 = min_raise, 3 = max_raise
+        if action == 0:
+            pass
+        elif action == 1:
+            action = obs['call']
+        elif action == 2:
+            action = obs['min_raise']
+        elif action == 3:
+            action = obs['max_raise']
+        else:
+            print(f'[ERROR] - Your Network output ({action}) is not designed for the environment, change either your num_output node or the action_func!')
+            raise ValueError
+
+        # 0 = Fold, [1,2,...] = bet
+
+        # if action > 0 and action < obs['call']:
+        #     action = min(int(obs['call']), self.max_bet_agent)
+        #
+        # elif obs['call'] == 0 and obs['call'] < action and obs['min_raise'] > action:
+        #     action = min(int(obs['min_raise']), self.max_bet_agent)
+
+        return int(action)
 
     def traverse(self, history, traverser, CFR_iteration, action=None):
         """
         Following the pseudocode from [DeepCFR]
         # input(history, traverser, val_model_0, val_model_1, val_mem_trav, strat_mem, t)
 
-        Parameters
+        Parametershistory
         ----------
         env : clubs_gym env
             Has 2 agents in its dealer.
@@ -348,7 +391,8 @@ class Traversal_Runner:
             obs, reward, done, _ = self.env.step(action)
 
         else:
-            print(f'[ERROR] - {action} is not a valid action.')
+            print(f'[ERROR] - {action} type: {type(action)} is not a valid action.')
+            raise ValueError
 
         mode = self.env.dealer.num_streets
 
@@ -384,23 +428,23 @@ class Traversal_Runner:
             # the advantages)
             # call model on observation, no softmax
             info_state = get_info_state(obs, history, self.max_bet_number, mode, self.config_dict)
-
-            try:
-                strategy = self.env.agents[traverser].act(info_state, strategy=True)
-            except:
-                breakpoint()
+            strategy = self.env.agents[traverser].act(info_state, strategy=True)
 
             # 3.2
             # iterate over all actions and do traversals starting from each actions
             # subsequent history
             values = []
             orig_env = self.env
-            for a in range(len(strategy.numpy()[0])):
+            for action_index in range(len(strategy.numpy()[0])):
                 self.env = self.create_env_cpy(orig_env)
                 history_cpy = deepcopy(history)  # copy bet size history
-                history_cpy.append(a)  # add bet to bet history
+                bet = self.action_func(action_index, obs)
+                history_cpy.append(bet)  # add bet to bet history
 
-                traverser_payoff = self.traverse(history_cpy, traverser, CFR_iteration, action=a)[0]
+                # appending traaverser bets is redundant, as all actions would be appended
+                # orig_env.agents[0].append_to_bet(a)
+
+                traverser_payoff = self.traverse(history_cpy, traverser, CFR_iteration, bet)[0]
                 values.append(traverser_payoff)
 
             self.env = orig_env
@@ -448,15 +492,10 @@ class Traversal_Runner:
             # 3.
             # get action (softmax) according to strategy
             action = self.env.act(info_state)
-            max_action = 5
+            bet = self.action_func(action, obs)
+            history.append(bet)
 
-            if action > 0 and action < obs['call']:
-                action = min(int(obs['call']), max_action)
-            elif obs['call'] == 0 and obs['call'] < action and obs['min_raise'] > 0:
-                action = min(int(obs['min_raise']), max_action)
-
-            history.append(action)
-            return (self.traverse(history, traverser, CFR_iteration, action)[0], self.ID)
+            return (self.traverse(history, traverser, CFR_iteration, bet)[0], self.ID)
 
     def set_weights(self, player, weights):
         self.env.agents[player].model.set_weights(weights)

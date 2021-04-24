@@ -11,14 +11,14 @@ from memory_utils import flatten_data_for_memory
 
 # ------------------- initialization stuff -------------------------------
 # for ray backend
-num_cpus = 13 # psutil.cpu_count(logical=True)
+num_cpus = 12 # psutil.cpu_count(logical=True)
 ray.init(logging_level=logging.INFO)
 
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 100_000
-CFR_iteration_start = 3
+num_traversals = 10_000
+CFR_start_itartion = 1
 CFR_iterations = 20
 number_batches = 4_000
 batch_size = 5_000
@@ -35,14 +35,14 @@ agent_fct = TensorflowAgent
 
 # set agents strategy networks
 # None if trained from scratch
-custom_model_save_paths = ['memories/trained_advantage-network_player-0_CRF-iteration-2', 'memories/trained_advantage-network_player-1_CRF-iteration-2']
+custom_model_save_paths = None #['memories/trained_advantage-network_player-0_CRF-iteration-3', 'memories/trained_advantage-network_player-0_CRF-iteration-3']
 
 # Set game parameters
 env_str = 'LDRL-Poker-v0'
 num_players = 2
 num_streets = 2
 num_raises = 3
-num_actions = 6
+num_actions = 4
 num_cards = [2, 3]
 
 n_community_cards = [0] + num_cards[1:]
@@ -69,9 +69,9 @@ config_dict = {'num_players': num_players,
 if custom_model_save_paths is not None:
     model_save_paths = custom_model_save_paths
 else:
-    model_save_paths = [f'value_model_p_{i}' for i in range(num_players)]
-    cfr_models = [get_DeepCFR_model(output_dim, num_cards, max_bet_number, num_actions, zero_outputs = True)
-                  for _ in range(num_players)]
+    model_save_paths = [f'random_value_model_p_{i}' for i in range(num_players)]
+    cfr_models = [get_DeepCFR_model(output_dim, num_cards, max_bet_number,
+                  num_actions, zero_outputs=True) for _ in range(num_players)]
 
     saves = [model.save(fn) for fn, model in zip(model_save_paths, cfr_models)]
     agents = [agent_fct(p) for p in model_save_paths]
@@ -80,11 +80,12 @@ else:
 runner_kwargs = {'model_save_paths': model_save_paths,
                  'agent_fct': agent_fct,
                  'config_dict': config_dict,
-                 'max_bet_number': max_bet_number}
+                 'max_bet_number': max_bet_number,
+                 'max_bet_agent': num_actions-1}  # -1, as 0 is fold
 
 # 3.
 # execution loop
-trainer = Coordinator(memory_buffer_size=5_000,
+trainer = Coordinator(memory_buffer_size=500,
                       reservoir_size=reservoir_size,
                       batch_size=batch_size,
                       vector_length=sum(num_cards) + max_bet_number + num_actions + 1,
@@ -96,5 +97,5 @@ trainer = Coordinator(memory_buffer_size=5_000,
                       memory_dir='memories/',
                       result_dir='results/')
 
-trainer.deep_CFR(env_str, config_dict, CFR_iterations, num_traversals, num_players,
+trainer.deep_CFR(env_str, config_dict, CFR_start_itartion, CFR_iterations, num_traversals, num_players,
                  runner_kwargs, num_runners=num_cpus)

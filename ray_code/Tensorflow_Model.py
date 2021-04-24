@@ -21,9 +21,8 @@ class Normalize(tf.keras.layers.Layer):
     def __init__(self):
         super(Normalize, self).__init__()
         self.normalize = tf.keras.layers.experimental.preprocessing.Normalization(mean = 0, variance = 1)
-        #self.normalize.set_weights([0, 1])
 
-    def call(self,x):
+    def call(self, x):
         return self.normalize(x)
 
 
@@ -232,7 +231,7 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False, 
     z = tf.nn.relu(comb3(z) + z)
 
     # normalize (needed because of bet sizes)
-    z = norm(z) #normalize(z) #(z - tf.math.reduce_mean(z, axis=-1)) / tf.math.reduce_std(z, axis=-1)
+    z = norm(z)  # normalize(z) #(z - tf.math.reduce_mean(z, axis=-1)) / tf.math.reduce_std(z, axis=-1)
 
     output = action_head(z)
 

@@ -36,11 +36,6 @@ def get_tf_dataset(file_name, batch_size, num_infostates, num_cards, num_bets, n
             return tf.constant(hole_cards), tf.constant(flop_cards), tf.constant(bets), tf.constant(iteration), tf.constant(values)
 
 
-        #return network_input, targets, iteration
-
-
-
-
     def memory_generator():
         with h5py.File(file_name,"r") as hf:
 
