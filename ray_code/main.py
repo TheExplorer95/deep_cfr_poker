@@ -2,10 +2,10 @@ import os; os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 import logging
 import psutil
 import ray
-from utils_ray import activate_memory_growth; activate_memory_growth(cpu=False)
-from deep_CFR_traversal_ray import Coordinator
-from Tensorflow_Model import get_DeepCFR_model
-from PokerAgent import TensorflowAgent, Bet_Fct
+from utils import activate_memory_growth; activate_memory_growth(cpu=False)
+from deep_CFR_algorithm import DeepCFR_Coordinator
+from deep_CFR_model import get_DeepCFR_model
+from poker_agent import TensorflowAgent, Bet_Fct
 from memory_utils import flatten_data_for_memory
 
 """
@@ -95,17 +95,17 @@ runner_kwargs = {'model_save_paths': model_save_paths,
 
 # 3.
 # execution loop
-trainer = Coordinator(memory_buffer_size=500,
-                      reservoir_size=reservoir_size,
-                      batch_size=batch_size,
-                      vector_length=sum(num_cards) + max_bet_number + num_actions + 1,
-                      num_actions=num_actions,
-                      num_batches=number_batches,
-                      output_dim=output_dim,
-                      n_cards=num_cards,
-                      flatten_func=flatten_data_for_memory,
-                      memory_dir=f'memories_{model_type}-Model/',
-                      result_dir=f'results_train_{model_type}-Model/')
+trainer = DeepCFR_Coordinator(memory_buffer_size=500,
+                              reservoir_size=reservoir_size,
+                              batch_size=batch_size,
+                              vector_length=sum(num_cards) + max_bet_number + num_actions + 1,
+                              num_actions=num_actions,
+                              num_batches=number_batches,
+                              output_dim=output_dim,
+                              n_cards=num_cards,
+                              flatten_func=flatten_data_for_memory,
+                              memory_dir=f'memories_{model_type}-Model/',
+                              result_dir=f'results_train_{model_type}-Model/')
 
 trainer.deep_CFR(env_str, config_dict, CFR_start_itartion, CFR_iterations,
                  num_traversals, num_players, runner_kwargs, num_runners=num_cpus)

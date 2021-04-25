@@ -1,5 +1,4 @@
 import random
-import time
 import clubs_gym
 import gym
 import os
@@ -11,15 +10,16 @@ from random import shuffle
 # import tensorflow_probability as tfp
 from copy import deepcopy, copy
 from tqdm import tqdm
-from utils_ray import get_info_state
+from utils import get_info_state
 from memory_utils import MemoryWriter
-from Tensorflow_Model import get_DeepCFR_model
+from deep_CFR_model import get_DeepCFR_model
 from training_utils import get_tf_dataset
 
 
-class Coordinator:
+class DeepCFR_Coordinator:
     """
-    Coordinates acquestion, saving and training of deep CFR.
+    The wrapper for deep CFR, which coordinates acquestion, saving and training
+    during deep CFR traversals.
 
     Params
     ------
@@ -151,6 +151,9 @@ class Coordinator:
     def deep_CFR(self, env_str, config_dict, CFR_start_itartion, CFR_iterations, num_traversals, num_players,
                  runner_kwargs, num_runners):
         """
+        The deep CFR traversal algorithm, implemented according to the deep CFR
+        paper (Algorithm 1).
+
         Parameters
         ----------
         env_str : gym.env ID string
@@ -228,14 +231,14 @@ class Coordinator:
 
                             # fancy prints and stats
                             traversal_counter += 1
-                            fancy_print.set_description(f'Mem_count: adv_0 {self.advantage_writer_0.counter[1]} adv_1 {self.advantage_writer_1.counter[1]} strat {self.strategy_writer.counter[1]} - Travers_prog',
+                            fancy_print.set_description(f'Mem_count: adv_0 {self.advantage_writer_0.counter[1]} | adv_1 {self.advantage_writer_1.counter[1]} | strat {self.strategy_writer.counter[1]} - Travers_prog',
                                                         refresh=True)
                             fancy_print.update(1)
 
                             if not traversal_counter % (num_traversals//5):
                                 self.print_bet_mem()
 
-                print(f'[Payer - {p}] - Finished sampling - Mem_count: adv_0 {self.advantage_writer_0.counter[1]} adv_1 {self.advantage_writer_1.counter[1]} strat {self.strategy_writer.counter[1]}.')
+                print(f'[Payer - {p}] - Finished sampling - Mem_count: adv_0 {self.advantage_writer_0.counter[1]} | adv_1 {self.advantage_writer_1.counter[1]} | strat {self.strategy_writer.counter[1]}.')
 
                 # final cleanup of the runners and memories
                 for runner in runners:
@@ -304,7 +307,7 @@ class Coordinator:
         action_2 = self.bet_memory.count(2) / counts * 100
         action_3 = self.bet_memory.count(3) / counts * 100
 
-        print(f'action_probs:   fold/check {action_0:.2f}   check/call {action_1:.2f}   min_raise {action_2:.2f}   max_raise {action_3:.2f}', end='\n\n')
+        print(f'    - action_probs: fold/check {action_0:.2f} | check/call {action_1:.2f} | min_raise {action_2:.2f} | max_raise {action_3:.2f}', end='\n')
 
     def train_model_from_scratch(self, player, dataset, n_cards, num_bets,
                                  num_actions, strategy, CFR_iteration):
@@ -338,7 +341,9 @@ class Coordinator:
 
 @ray.remote
 class Traversal_Runner:
-    """ Used for the distributed sampling of CFR_data
+    """
+    Used for the distributed sampling of CFR traversals with ray
+    multiprocessing.
 
     Parameters
     ----------
@@ -376,8 +381,8 @@ class Traversal_Runner:
         self.create_env(model_save_paths, agent_fct)
 
     def create_env(self, model_save_paths, agent_fct):
-        # Creates an environment with new beginning state and new agent instances
-        # with models passed as filepaths.
+        # Creates an environment with new beginning state and new agent
+        # instances with models passed as filepaths.
 
         clubs_gym.envs.register({self.env_str: self.config_dict})
         self.env = gym.make(self.env_str)
@@ -392,10 +397,10 @@ class Traversal_Runner:
 
     def create_env_cpy(self, orig_env):
         """
-        Creates a copy of the given clubs_gym envyronment. The dealers cards are
-        shuffled to ensure randomness at chance nodes (where the dealer hands out
-        the flop, river and street) and the reference for the model is creted
-        to the same model from before.
+        Creates a copy of the given clubs_gym envyronment. The dealers cards
+        are shuffled to ensure randomness at chance nodes (where the dealer
+        hands out the flop, river and street) and the reference for the model
+        is creted to the same model from before.
         """
 
         env_cpy = gym.make(self.env_str)
@@ -433,10 +438,10 @@ class Traversal_Runner:
 
     def traverse(self, history, traverser, CFR_iteration, action=None):
         """
-        Following the pseudocode from [DeepCFR]
-        # input(history, traverser, val_model_0, val_model_1, val_mem_trav, strat_mem, t)
+        Implementation of deep CFR traversals with external sampling, according
+        to the pseudocode from the deep CFR paper (Algorithm 2).
 
-        Parametershistory
+        Parameters
         ----------
         history : list
             Betting history [10, 10, 0, 0, 23, -1,-1,-1,-1, ...]

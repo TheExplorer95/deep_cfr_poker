@@ -1,5 +1,6 @@
 import logging
-import tensorflow as tf; logging.getLogger("tensorflow").setLevel(logging.WARNING)
+import tensorflow as tf
+logging.getLogger("tensorflow").setLevel(logging.WARNING)
 
 
 class Normalize(tf.keras.layers.Layer):
@@ -46,7 +47,6 @@ def get_embedding_model(output_dim, num_cards):
 
     cards_input = tf.keras.Input((num_cards,))
 
-
     rank_embedding = tf.keras.layers.Embedding(
         input_dim_rank, output_dim, embeddings_initializer='uniform',
         embeddings_regularizer=None, activity_regularizer=None,
@@ -68,61 +68,19 @@ def get_embedding_model(output_dim, num_cards):
     # cards is a list of card indices (2 for preflop, 3 for flop, 1 for turn, 1 for river)
     x = tf.keras.layers.Flatten()(cards_input)
     valid = tf.cast(x >= tf.constant(0.), tf.float32)
-    x = tf.clip_by_value(x, clip_value_min = 0, clip_value_max = 1e6)
-    embs = card_embedding(x) + rank_embedding(x // 4) + suit_embedding(x%4)
+    x = tf.clip_by_value(x, clip_value_min=0, clip_value_max=1e6)
+    embs = card_embedding(x) + rank_embedding(x // 4) + suit_embedding(x % 4)
     embs = embs * tf.expand_dims(valid, axis=-1)
-    embs = tf.reduce_sum(embs, axis=1) # sum over num_cards card embeddings
+    embs = tf.reduce_sum(embs, axis=1)  # sum over num_cards card embeddings
 
     model = tf.keras.Model(cards_input, embs)
 
     return model
 
 
-class CardEmbeddingLayer(tf.keras.layers.Layer):
-    def __init__(self, output_dim, n_cards):
-        super(CardEmbeddingLayer, self).__init__()
-
-        input_dim_rank = 13
-        input_dim_suit = 4
-        input_dim_card = 52
-
-        #cards_input = tf.keras.Input((num_cards,))
-
-        # EMBEDDING MODEL (used for each group of cards)
-
-        self.rank_embedding = tf.keras.layers.Embedding(
-            input_dim_rank, output_dim, embeddings_initializer='ones',
-            embeddings_regularizer=None, activity_regularizer=None,
-            embeddings_constraint=None, mask_zero=False, input_length=None,
-        )
-
-        self.suit_embedding = tf.keras.layers.Embedding(
-            input_dim_suit, output_dim, embeddings_initializer='ones',
-            embeddings_regularizer=None, activity_regularizer=None,
-            embeddings_constraint=None, mask_zero=False, input_length=None,
-        )
-
-        self.card_embedding = tf.keras.layers.Embedding(
-            input_dim_card, output_dim, embeddings_initializer='ones',
-            embeddings_regularizer=None, activity_regularizer=None,
-            embeddings_constraint=None, mask_zero=False, input_length=None,
-        )
-        self.flatten = tf.keras.layers.Flatten()
-        # cards is a list of card indices (2 for preflop, 3 for flop, 1 for turn, 1 for river)
-
-        def call(cards_input):
-            x = self.flatten(cards_input)
-            valid = tf.cast(x >= tf.constant(0.), tf.float32)
-            x = tf.clip_by_value(x, clip_value_min = 0, clip_value_max = 1e6)
-            embs = self.card_embedding(x) + self.rank_embedding(x // 4) + self.suit_embedding(x%4)
-            embs = embs * tf.expand_dims(valid, axis=-1)
-            embs = tf.reduce_sum(embs , axis=1) # sum over num_cards card embeddings
-            # tf.print(embs.shape)
-
-            return embs
-
-
 # used within the custom model defined afterwards
+# Info: we had problems with creating it as a new class variable, thats why its
+# located outside of the class
 loss_tracker = tf.keras.metrics.Mean(name="loss")
 
 
@@ -136,9 +94,9 @@ class CustomModel(tf.keras.Model):
     def train_step(self, data):
         # uses tensorflow autograd
 
-        if len(data)== 4:
+        if len(data) == 4:
             hole_cards, bets, iterations, targets = data
-            network_input = [[hole_cards],bets]
+            network_input = [[hole_cards], bets]
 
         elif len(data) == 5:
             hole_cards, flop_cards, bets, iterations, targets = data
@@ -238,14 +196,14 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy=False,
     x = card3(x)
 
     # bet branch
-    bet_size = tf.clip_by_value(bets, tf.constant(0.), tf.constant(1e6)) # clip bet sizes
-    bets_occured = tf.cast(bets >= tf.constant(0.), tf.float32) # check if bet occured
-    bet_features = tf.concat([bet_size, bets_occured], axis = -1)   # bet size and boolean bet
+    bet_size = tf.clip_by_value(bets, tf.constant(0.), tf.constant(1e6))  # clip bet sizes
+    bets_occured = tf.cast(bets >= tf.constant(0.), tf.float32)  # check if bet occured
+    bet_features = tf.concat([bet_size, bets_occured], axis=-1)  # bet size and boolean bet
     y = bet1(bet_features)
     y = bet2(y)
 
     # combine bet history and card embedding branches
-    z = tf.concat([x,y],axis=-1)
+    z = tf.concat([x, y], axis=-1)
     z = tf.nn.relu(comb1(z))
     z = tf.nn.relu(comb2(z) + z)
     z = tf.nn.relu(comb3(z) + z)

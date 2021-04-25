@@ -13,7 +13,7 @@ def print_obs(obs, num_suits):
 
     print('------------------- game Stats -------------------')
     print(f'community_cards: {obs["community_cards"]}')
-    print(f'Dealer/Button: {obs["button"]%2}')
+    print(f'Dealer/Button: {obs["button"] % 2}')
     print(f'Pot: {obs["pot"]}')
     print(f'Commits: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
     # hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
@@ -34,7 +34,7 @@ def print_player0_obs(obs, num_suits):
 
     print('------------------ game Stats ------------------')
     print(f'community_cards: {obs["community_cards"]}')
-    print(f'Dealer/Button: Player {obs["button"]%2}')
+    print(f'Dealer/Button: Player {obs["button"] % 2}')
     print(f'Pot: {obs["pot"]}')
     print(f'Commits: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
     print(f"\n--------------- player {obs['action']}'s turn ---------------")

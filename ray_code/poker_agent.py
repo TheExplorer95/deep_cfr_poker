@@ -1,7 +1,7 @@
 import tensorflow as tf
 from clubs_gym.agent.base import BaseAgent
 import tensorflow_probability as tfp
-from Tensorflow_Model import regret_matching
+from deep_CFR_model import regret_matching
 
 
 class Bet_Fct:
