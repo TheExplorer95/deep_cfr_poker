@@ -10,7 +10,7 @@ from memory_utils import flatten_data_for_memory
 
 # ------------------- initialization stuff -------------------------------
 # for ray backend
-cpu_counts_for_work = 4
+cpu_counts_for_work = 1
 num_cpus = psutil.cpu_count(logical=True) - cpu_counts_for_work
 ray.init(logging_level=logging.INFO)
 
@@ -31,8 +31,8 @@ if not num_traversals > num_cpus:
     num_cpus = num_traversals
 
 # Set agent
-model_output_types = ['action', 'bet']
-model_type = model_output_types[0]
+model_output_types = ['action', 'action_2', 'bet']
+model_type = model_output_types[1]
 
 agent_fct = TensorflowAgent
 bet_fct = Bet_Fct(model_type)

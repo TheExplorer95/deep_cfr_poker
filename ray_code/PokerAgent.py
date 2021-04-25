@@ -38,6 +38,23 @@ class Bet_Fct:
                 print(f'[ERROR] - Your Network output ({action}) is not designed for the environment, change either your num_output node or the action_func!')
                 raise ValueError
 
+        if self.input_type == 'action_2':
+            # Mapping:
+            # 0 = Fold, 1 = Call, 2 = min_raise, 3 = max_raise
+
+            if action == 0:
+                bet = 0
+            elif action == 1:
+                bet = obs['call']
+            elif action == 2:
+                bet = 2
+            elif action == 3:
+                bet = 4
+            else:
+                print(f'[ERROR] - Your Network output ({action}) is not designed for the environment, change either your num_output node or the action_func!')
+                raise ValueError
+
+
         elif self.type == 'bet':
             # Mapping
             # 0 = Fold, [1,2,...] = bet
@@ -102,6 +119,6 @@ class TensorflowAgent(BaseAgent):
             self.bet_history.append(int(sampled_action))
 
             return sampled_action
-
-    def append_to_bet(self, action):
-        self.bet_history.append(action)
+    #
+    # def append_to_bet(self, action):
+    #     self.bet_history.append(action)
