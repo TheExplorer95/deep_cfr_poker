@@ -21,7 +21,7 @@ num_traversals = 10_000
 CFR_start_itartion = 1
 CFR_iterations = 20
 number_batches = 4_000
-batch_size = 512  # 10_000 testing now
+batch_size = 10_000
 reservoir_size = 40_000_000
 output_dim = 256  # model for card embeddings
 

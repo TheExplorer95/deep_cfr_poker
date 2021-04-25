@@ -162,7 +162,8 @@ class CustomModel(tf.keras.Model):
         return [loss_tracker]
 
 
-def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False, zero_outputs = False):
+def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy=False,
+                      zero_outputs=False):
     """
     output_dim: dimensionality of embedding
     n_cards: a list of card numbers for each phase of the game (e.g. 2 preflop, 3 flop)
@@ -171,8 +172,8 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False, 
     """
 
     # define inputs
-    cards = [tf.keras.Input([n,], name = f"cards{i}") for i,n in enumerate(n_cards)]
-    bets = tf.keras.Input([n_bets], name = "bets")
+    cards = [tf.keras.Input([n, ], name=f"cards{i}") for i, n in enumerate(n_cards)]
+    bets = tf.keras.Input([n_bets], name="bets")
 
     # embedding layer for each card type (pre-flop, flop, turn, river)
     output_dims = [output_dim for _ in range(len(n_cards))]
@@ -182,9 +183,9 @@ def get_DeepCFR_model(output_dim, n_cards, n_bets, n_actions, strategy = False, 
                         num_output_dims in zip(n_cards, output_dims)]
 
     regr_matching = RegretMatching()
-    card1 = tf.keras.layers.Dense(output_dim, activation = "relu")
-    card2 = tf.keras.layers.Dense(output_dim, activation = "relu")
-    card3 = tf.keras.layers.Dense(output_dim, activation = "relu")
+    card1 = tf.keras.layers.Dense(output_dim, activation="relu")
+    card2 = tf.keras.layers.Dense(output_dim, activation="relu")
+    card3 = tf.keras.layers.Dense(output_dim, activation="relu")
 
     bet1 = tf.keras.layers.Dense(output_dim)
     bet2 = tf.keras.layers.Dense(output_dim)

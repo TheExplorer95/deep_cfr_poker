@@ -38,7 +38,7 @@ class Bet_Fct:
                 print(f'[ERROR] - Your Network output ({action}) is not designed for the environment, change either your num_output node or the action_func!')
                 raise ValueError
 
-        if self.input_type == 'action_2':
+        elif self.input_type == 'action_2':
             # Mapping:
             # 0 = Fold, 1 = Call, 2 = min_raise, 3 = max_raise
 
@@ -54,8 +54,7 @@ class Bet_Fct:
                 print(f'[ERROR] - Your Network output ({action}) is not designed for the environment, change either your num_output node or the action_func!')
                 raise ValueError
 
-
-        elif self.type == 'bet':
+        elif self.input_typetype == 'bet':
             # Mapping
             # 0 = Fold, [1,2,...] = bet
 

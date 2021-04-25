@@ -267,7 +267,7 @@ class Coordinator:
 
     def train_model_from_scratch(self, player, dataset, n_cards, num_bets,
                                  num_actions, strategy, CFR_iteration):
-        # load model
+        # create model
         model = get_DeepCFR_model(self.output_dim, n_cards, num_bets,
                                   num_actions, strategy)
         # train model
@@ -497,7 +497,17 @@ class Traversal_Runner:
             for tensor in info_state[0]:
                 cards.append(tensor.numpy())
             bet_hist = info_state[1].numpy()
-            self.advantage_memory.append(([cards, bet_hist], CFR_iteration, advantages))
+
+            # scaling
+            std = np.std(advantages)
+            if not std == 0:
+                advantages = np.array(advantages) / std
+                self.advantage_memory.append(([cards, bet_hist], CFR_iteration, advantages))
+            elif np.count_nonzero(advantages) == 0:
+                advantages = np.array(advantages)
+                self.advantage_memory.append(([cards, bet_hist], CFR_iteration, advantages))
+            else:
+                print(f'[INFO] - Advantages {advantages} were not appended')
 
             expected_infostate_value = np.sum(strategy.numpy()[0] * np.array(values))
             return (expected_infostate_value, self.ID)
