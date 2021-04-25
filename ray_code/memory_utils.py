@@ -7,11 +7,6 @@ def flatten_data_for_memory(info_state, iteration, values):
     """
     Flattens data to store into a memory object.
     """
-
-    # try:
-    #     values = np.reshape(values, (values.shape[1],))
-    # except Exception:
-
     flattened_data = np.concatenate([*[info_state[0][i].flatten() for i in range(len(info_state[0]))],
                                     info_state[1].flatten(),
                                     np.array([iteration]),
@@ -41,17 +36,18 @@ class MemoryWriter(object):
             with h5py.File(self.file_name, "r") as hf:
                 self.counter = np.array(hf.get("counter"))
             print("[INFO] - previous counter loaded")
+
         except Exception:
             # create new dataset file with a counter and an array
             with h5py.File(self.file_name, "w") as hf:
-
                 hf.create_dataset("counter", data=self.counter)
                 hf.create_dataset("data", (self.max_size, self.vector_len), dtype=np.float32)
             print(f"[INFO] - new counter set and dataset of size {(self.max_size, self.vector_len)} is initiated.")
 
     def save_to_memory(self, data):
         """
-        Takes a list of tuples (info_state, iteration, values) and stores each to the memory hdf5 file.
+        Takes a list of tuples (info_state, iteration, values) and stores each
+        to the memory hdf5 file.
 
         Uses Reservoir sampling for samples that exceed the specified max_size.
         """

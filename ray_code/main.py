@@ -8,11 +8,17 @@ from Tensorflow_Model import get_DeepCFR_model
 from PokerAgent import TensorflowAgent, Bet_Fct
 from memory_utils import flatten_data_for_memory
 
-# ------------------- initialization stuff -------------------------------
-# for ray backend
+"""
+Information of the here set parameters can be found in the specific class or
+function it is used for. The poker environment is initialized as a clubs_gym,
+whichs documentation can be found on GitHub.
+
+Maybe check if there is a readme file for the parameters, its definetly
+to make one...at least at some point.
+"""
+
+# how many cpus do you wanna leave free from work during CRF sampling?
 cpu_counts_for_work = 1
-num_cpus = psutil.cpu_count(logical=True) - cpu_counts_for_work
-ray.init(logging_level=logging.INFO)
 
 # -------------------- The Algorithm -------------------------------------
 # 1.
@@ -25,21 +31,12 @@ batch_size = 10_000
 reservoir_size = 40_000_000
 output_dim = 256  # model for card embeddings
 
-# check if num_cpus good to go
-if not num_traversals > num_cpus:
-    # need less runners
-    num_cpus = num_traversals
-
 # Set agent
-model_output_types = ['action', 'action_2', 'bet']
+custom_model_save_paths = None  # set agents strategy networks, None if trained from scratch
+model_output_types = ['action', 'action_2', 'bet']  # choose one below (index)
 model_type = model_output_types[1]
-
 agent_fct = TensorflowAgent
 bet_fct = Bet_Fct(model_type)
-
-# set agents strategy networks
-# None if trained from scratch
-custom_model_save_paths = None
 
 # Set game parameters
 env_str = 'LDRL-Poker-v0'
@@ -67,6 +64,15 @@ config_dict = {'num_players': num_players,
                'num_community_cards': n_community_cards,
                'start_stack': 1_000_000,
                'num_cards_for_hand': n_cards_for_hand}
+
+# get number of cpus for amount of runner
+num_cpus = psutil.cpu_count(logical=True) - cpu_counts_for_work
+ray.init(logging_level=logging.INFO)
+
+# check if num_cpus good to go
+if not num_traversals > num_cpus:
+    # need less runners
+    num_cpus = num_traversals
 
 # 2.
 # initialize training networks
@@ -101,5 +107,5 @@ trainer = Coordinator(memory_buffer_size=500,
                       memory_dir=f'memories_{model_type}-Model/',
                       result_dir=f'results_train_{model_type}-Model/')
 
-trainer.deep_CFR(env_str, config_dict, CFR_start_itartion, CFR_iterations, num_traversals, num_players,
-                 runner_kwargs, num_runners=num_cpus)
+trainer.deep_CFR(env_str, config_dict, CFR_start_itartion, CFR_iterations,
+                 num_traversals, num_players, runner_kwargs, num_runners=num_cpus)

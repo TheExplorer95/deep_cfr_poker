@@ -20,9 +20,50 @@ from training_utils import get_tf_dataset
 class Coordinator:
     """
     Coordinates acquestion, saving and training of deep CFR.
+
+    Params
+    ------
+
+    memory_buffer_size : int
+        The amount of memory appends to wait until the Infostates on the ram
+        are saved to disk.
+
+    reservoir_size : int
+        The length of the memories; "Save size on you computer" (Info: also
+        defines how many appends to the advantage memory until resorvoir
+        sampling starts).
+
+    batch_size : int
+        Batch size for training the models.
+
+    vector_length : int
+        Length of one adv/strat memory entry. Neccessary for disk saving.
+
+    num_actions : int
+        Number of possible actions the agent/model can execute.
+
+    num_batches : int
+        Number of batches to consider for training the models.
+
+    output_dim : int
+        Dimensionality of the card embeddings latent dimension.
+
+    n_cards : list of ints
+        Hole and community cards delt for each street.
+
+    flatten_func : function
+        The function applied to flatten Infostates for saving them to disk.
+
+    memory_dir : str
+        Name of the memory directory.
+
+    result_dir : str
+        Name of the memory directory.
     """
 
-    def __init__(self, memory_buffer_size, reservoir_size, batch_size, vector_length, num_actions, num_batches, output_dim, n_cards, flatten_func, memory_dir, result_dir):
+    def __init__(self, memory_buffer_size, reservoir_size, batch_size,
+                 vector_length, num_actions, num_batches, output_dim,
+                 n_cards, flatten_func, memory_dir, result_dir):
         self.advantage_memory_0 = []
         self.advantage_memory_1 = []
         self.strategy_memory = []

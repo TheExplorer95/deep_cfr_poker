@@ -7,15 +7,16 @@ import os
 
 def print_obs(obs, num_suits):
     """
-    Only for heads up poker, assumes 2 player.
+    Fancy print of stats for the clubs gym poker gym.
+    All Cards displayed.
     """
-    # hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
-    # community_cards = convert_cards_to_id(obs['community_cards'], num_suits)
+
     print('------------------- game Stats -------------------')
     print(f'community_cards: {obs["community_cards"]}')
     print(f'Dealer/Button: {obs["button"]%2}')
     print(f'Pot: {obs["pot"]}')
     print(f'Commits: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
+    # hole_cards = convert_cards_to_id(obs['hole_cards'], num_suits)
 
     if not obs['action'] == -1:
         print(f"\n---------------- player {obs['action']}'s turn ----------------")
@@ -23,6 +24,24 @@ def print_obs(obs, num_suits):
         print(f'call: {obs["call"]}, min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}', end='\n\n')
     else:
         print('\n[INFO] - End of the Game.')
+
+
+def print_player0_obs(obs, num_suits):
+    """
+    Fancy print of stats for the clubs gym poker gym.
+    Only player 0 cards shown.
+    """
+
+    print('------------------ game Stats ------------------')
+    print(f'community_cards: {obs["community_cards"]}')
+    print(f'Dealer/Button: Player {obs["button"]%2}')
+    print(f'Pot: {obs["pot"]}')
+    print(f'Commits: player_0 {obs["street_commits"][0]}, player_1 {obs["street_commits"][1]}')
+    print(f"\n--------------- player {obs['action']}'s turn ---------------")
+
+    if not obs['action'] == -1 and obs['action'] == 0:
+        print(f'hole_cards: {obs["hole_cards"]}')
+        print(f'fold/check: 0, call: {obs["call"]}, min_raise: {obs["min_raise"]}, max_raise: {obs["max_raise"]}')
 
 
 def activate_memory_growth(cpu: bool):

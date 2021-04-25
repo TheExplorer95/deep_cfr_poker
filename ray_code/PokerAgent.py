@@ -9,6 +9,10 @@ class Bet_Fct:
     Function that converts the action taken by the bot to the actual bet
     made.
 
+    To define your own bet function, just define a new string within the call
+    function (has to be added to the main script too) and define bets for as
+    many actions your model is capeable in doing.
+
     Params:
     action_idx - int (output of the model)
     obs - dict (current observation)
@@ -55,6 +59,8 @@ class Bet_Fct:
                 raise ValueError
 
         elif self.input_typetype == 'bet':
+            print(f'[INFO] - Input type: {self.input_type} was not fully implemented, please change to another one in the main script.')
+
             # Mapping
             # 0 = Fold, [1,2,...] = bet
 

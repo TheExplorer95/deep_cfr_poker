@@ -3,14 +3,16 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-def plot_results(reward_history, num_actions, action_history_p0, action_history_p1, preflop_history_p0, preflop_history_p1, save_path=None):
+def plot_results(reward_history, num_actions, action_history_p0,
+                 action_history_p1, preflop_history_p0, preflop_history_p1,
+                 save_path=None):
     """
     Creates line plots of the reward history and cumulative reward for player_0
     and histograms of the played actions as well as played preFlop actions.
     """
 
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(4,1, figsize=(12, 15))
+    fig, axs = plt.subplots(4, 1, figsize=(12, 15))
 
     # payoff
     axs[0].plot(range(0, reward_history.shape[0]), reward_history[:,0])
@@ -19,7 +21,7 @@ def plot_results(reward_history, num_actions, action_history_p0, action_history_
     axs[0].set_ylabel('Payoff (Chips)')
 
     # cumulative payoff
-    cum_rew_p_0 = cumulative_reward(reward_history[:,0])
+    cum_rew_p_0 = cumulative_reward(reward_history[:, 0])
     axs[1].plot(range(0, len(cum_rew_p_0)), cum_rew_p_0)
     axs[1].set_title("Player 0's cumulative Payoff", fontsize=16)
     axs[1].set_xlabel('Game')
