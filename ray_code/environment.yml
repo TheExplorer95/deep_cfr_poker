@@ -1,4 +1,4 @@
-name: poker
+name: poker_CFR
 channels:
   - conda-forge
   - defaults
