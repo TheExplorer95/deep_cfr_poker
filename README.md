@@ -53,5 +53,5 @@ We have **2 python scripts** and **2 jupyter notbooks** that are intended for **
 
 **Documentaion**
 
-1. {proejct_report}
+1. project_report
 
