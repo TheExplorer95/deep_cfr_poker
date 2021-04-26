@@ -1,6 +1,6 @@
 # Combining Reinforcement Learning, Deep Learning and Game theory approaches in building a poker bot
 
-This is Janosch Bajoraths and Mathis Pinks project repository for the the deep Reinforcement Learning class (WS20/21) at the University of Osnabrück.
+This is Janosch Bajoraths and Mathis Pinks project for the the deep Reinforcement Learning class (WS20/21) at the University of Osnabrück.
 
 ## Dependencies
 
@@ -10,7 +10,7 @@ We use a poker game implementation from the clubs_gym package and ray for multi-
 
 If something doesn't work feel free to contact us!!!
 
-## The Code
+## Content
 
 We have **2 python scripts** and **2 jupyter notbooks** that are intended for **end user application**:
 1. main
@@ -51,6 +51,7 @@ Oother important scripts:
 2. results/eval
 > Contains evaluation data of trained advantage and strategy networks. (When train was used even more)
 
-## Documentaion
+**Documentaion**
 
-Links for the documentaiton.
+1. {proejct_report}
+
