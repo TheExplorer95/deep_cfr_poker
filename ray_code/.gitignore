@@ -4,3 +4,4 @@ exp_data/
 games-against-bot
 .ipynb_checkpoints/
 __pycache__/
+test_stuff.ipynb
