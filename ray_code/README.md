@@ -27,7 +27,7 @@ We have **2 python scripts** and **2 jupyter notbooks** that are intended for **
 4. eval_bot
 > Python script to evaluate several bots at once. Just set your parameters at the top and you are good to got (predefined parameters also work).
 
-Oother important scripts:
+**Oother important scripts:**
 1. deep_CFR_algorithm
 > Ray implementation of the deep CFR Algorithm from the [deep CFR paper](https://arxiv.org/abs/1811.00164]).
 
