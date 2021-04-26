@@ -12,7 +12,9 @@ If something doesn't work feel free to contact us!!!
 
 ## Content
 
-We have **2 python scripts** and **2 jupyter notbooks** that are intended for **end user application**:
+
+<details>
+<summary>We have **2 python scripts** and **2 jupyter notbooks** that are intended for **end user application**:</summary>
 1. main
 > The core deep CFR algorithm implemented according to the [deep CFR paper](https://arxiv.org/abs/1811.00164]). Set preferred parameters within the script (preset ones are standard ones used by us) and run it from your terminal. It will train and save both players trained advantage models and loss during each CFR iteration as well as the strategy model at the end of the CFR algorithm. Creates memory files for the data that was produced during the game traversal. 
 
@@ -26,6 +28,7 @@ We have **2 python scripts** and **2 jupyter notbooks** that are intended for **
 
 4. eval_bot
 > Python script to evaluate several bots at once. Just set your parameters at the top and you are good to got (predefined parameters also work).
+</details>
 
 **Oother important scripts:**
 1. deep_CFR_algorithm
