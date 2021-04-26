@@ -17,12 +17,6 @@ def plot_results_0(reward_history, num_actions, action_history_p0,
     plt.style.use('ggplot')
     fig, axs = plt.subplots(3, 1, figsize=(12, 15))
 
-    # # payoff
-    # axs[0].plot(range(0, reward_history.shape[0]), reward_history[:,0])
-    # axs[0].set_title("Player 0's Payoff for each Game", fontsize=16)
-    # axs[0].set_xlabel('Game')
-    # axs[0].set_ylabel('Payoff (Chips)')
-
     # cumulative payoff
     cum_rew_p_0 = cumulative_reward(reward_history[:, 0])
     cum_rew_p_1 = cumulative_reward(reward_history[:, 1])
@@ -37,7 +31,7 @@ def plot_results_0(reward_history, num_actions, action_history_p0,
     axs[0].text(0.05, 0.95, textstr, transform=axs[0].transAxes, fontsize=12,
                 verticalalignment='top', bbox=props)
 
-    axs[0].legend(loc='best')
+    axs[0].legend(loc='upper right')
 
     # actions
     # 0 indicates a check or a fold, hence difficult to interprete
@@ -54,7 +48,7 @@ def plot_results_0(reward_history, num_actions, action_history_p0,
     axs[1].legend(loc='best')
 
     # preflop strategies
-    bins = np.arange(num_actions+1)-0.5
+    bins = np.arange(num_actions + 1) - 0.5
 
     axs[2].hist(flop_history_p0, bins=bins, alpha=.5, label=player_labels[0], density=True)
     axs[2].hist(flop_history_p1, bins=bins, alpha=.5, label=player_labels[1], density=True)

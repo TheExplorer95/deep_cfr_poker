@@ -14,7 +14,7 @@ Experimental code used for evaluating entire dirs, not intended for basic use.
 Will be integrated into jupyter notebook after finish up. Automates some stuff.
 """
 
-n_games = 10_000
+n_games = 40_000
 save_plot = True
 model_output_types = ['action', 'action_2', 'bet']
 model_type_index = 1
@@ -24,17 +24,17 @@ random_model_fn = 'random_value_model'
 # allways [p0, p1]
 
 # -1 = random, -2 strategy
-players = [[1, -1],
-           [0, -1],
-           [1, -1]]
+players = [[0, -1],
+           [1, -1],
+           [0,  1]] * 4
 
-CFR_iterations = [[2, 2],
-                  [2, 2],
-                  [1, 1]]
+CFR_iterations = [[1, 1],
+                  [1, 1],
+                  [1, 1]] * 4
 
 eval_strategy_net = [[False, False],
                      [False, False],
-                     [False, False]]
+                     [False, False]] * 4
 
 # Model Stuff ---------------
 
@@ -72,7 +72,7 @@ for p0, p1 in players:
     sub_titles.append(f'p0 CFR_it {p0} - p1 CFR_it{p1}')
 
 player_labels_p0 = []
-for p, iteration in zip(np.array(players)[:, 0], CFR_iterations):
+for p, iteration in zip(np.array(players)[:, 0], np.array(CFR_iterations)[:, 0]):
     if p == -1:
         player_labels_p0.append(f'{random_model_fn}')
     elif p == -2:
@@ -80,7 +80,7 @@ for p, iteration in zip(np.array(players)[:, 0], CFR_iterations):
     else:
         player_labels_p0.append(f'advantage-network_player-{p}_CRF-iteration-{iteration}')
 player_labels_p1 = []
-for p, iteration in zip(np.array(players)[:, 1], CFR_iterations):
+for p, iteration in zip(np.array(players)[:, 1], np.array(CFR_iterations)[:, 1]):
     if p == -1:
         player_labels_p1.append(f'{random_model_fn}')
     elif p == -2:
@@ -133,7 +133,7 @@ for path_i in range(iterations):
     exp_path = f'numberGames-{n_games}_modelType-{model_type}_model_dir-{model_folder}_{sub_titles[path_i]}'
     t_start = datetime.now()
     datetime_str = t_start.strftime('%Y%m%d-%H%M%S')
-    results_dir = os.path.join('results_eval', datetime_str + exp_path)
+    results_dir = os.path.join('results/eval', datetime_str + exp_path)
 
     if not os.path.isdir(results_dir):
         os.makedirs(results_dir)
