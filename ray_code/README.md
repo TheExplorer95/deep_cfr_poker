@@ -3,12 +3,16 @@
 This is the project repository for the the deep Reinforcement Learning class (WS20/21) at the university of Osnabrück by Mathis Pink and Janosch Bajorath.
 
 ## Dependencies
-clubs, clubs_gym, environment.yml, requirements.txt
+There are some important packages like gym, clubs, clubs_gym, ray and tensorflow that you should have installed on your computer to run the code. The best way to set up your environment is by using conda to create a new environment from the environment.yml file and then install some further requirements from the requirements.txt file via pip.
+
+We use a poker game implementation from the clubs_gym package and use ray for multi-threaded sampling during CFR traversals.
+
+If something doesn't work feel free to contact us!!!
 
 ## The Code
-We have 2 python scripts and 2 jupyter notbooks that are intended for end user application:
+We have **2 python scripts** and **2 jupyter notbooks** that are intended for **end user application**:
 1. main
-> The core deep CFR algorithm implemented according to (DEEP CFR REF). Set preferred parameters within the script (preset ones are standart ones used by us) and run it from your terminal. It will save both players trained advantage models uring each CFR iteration
+> The core deep CFR algorithm implemented according to (DEEP CFR REF). Set preferred parameters within the script (preset ones are standard ones used by us) and run it from your terminal. It will train and save both players trained advantage models and loss during each CFR iteration as well as the strategy model at the end of the CFR algorithm. Creates memory files for the data that was produced during the game traversal. 
 
 2. test_poker_bot
 > A Jupyter Notebook that is used to evaluate pretrained bots, just define your model paths and you are good to go.
@@ -31,19 +35,19 @@ Oother important scripts:
 3. poker_agent
 > Clubs_gym poker agents.
 
-Utils:
+**Utils:**
 1. utils
 2. memory_utils
 3. training_utils
 4. jupyter_nb_utils
 5. eval_utils
 
-Folders:
+**Folders:**
 1. trained_models
-> Bla
+> Contains tensorflow models of pretrained bots.
 
 2. results/eval
-> Bla
+> Contains evaluation data of trained advantage and strategy networks. (When train was used even more)
 
 ## Documentaion
 
