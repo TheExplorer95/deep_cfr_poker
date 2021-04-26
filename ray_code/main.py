@@ -22,13 +22,13 @@ be found on GitHub.
 cpu_counts_for_work = 1  # number of cpus left unused by the script
 experiment_str = 'increased_batch_size_to_10000'
 
-# CFR params
-num_traversals = 10_000
-CFR_start_itartion = 1
-CFR_iterations = 20
-number_batches = 4_000
-batch_size = 10_000
-reservoir_size = 40_000_000
+# CFR params (stuff in brackets is for fast demonstration of the code)
+num_traversals = 10_000  # (100)
+CFR_start_itartion = 1  # (1)
+CFR_iterations = 20  # (1)
+number_batches = 4_000   # (10)
+batch_size = 10_000  # (100)
+reservoir_size = 40_000_000   # (100_000)
 
 # Agent params
 agent_fct = TensorflowAgent

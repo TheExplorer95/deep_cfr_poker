@@ -18,23 +18,23 @@ n_games = 40_000
 save_plot = True
 model_output_types = ['action', 'action_2', 'bet']
 model_type_index = 1
-model_folder = 'training_batch_size_10000'
+model_folder = 'training_batch_size_10000/mathis_model'
 random_model_fn = 'random_value_model'
 
 # allways [p0, p1]
 
 # -1 = random, -2 strategy
-players = [[0, -1],
-           [1, -1],
-           [0,  1]] * 4
+players = [[0,  1],
+           [0, -1],
+           [1, -1]] * 3
 
 CFR_iterations = [[1, 1],
                   [1, 1],
-                  [1, 1]] * 4
+                  [1, 1]] * 3
 
 eval_strategy_net = [[False, False],
                      [False, False],
-                     [False, False]] * 4
+                     [False, False]] * 3
 
 # Model Stuff ---------------
 
