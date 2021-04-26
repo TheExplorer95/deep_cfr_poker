@@ -8,7 +8,7 @@ There are some important packages like gym, clubs, clubs_gym, ray and tensorflow
 
 We use a poker game implementation from the clubs_gym package and ray for multi-threaded sampling during CFR traversals.
 
-If something doesn't work feel free to contact us!!!
+If something does not work feel free to contact us!!!
 
 ## Content
 
