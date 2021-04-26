@@ -18,15 +18,15 @@ to make one...at least at some point.
 """
 
 # how many cpus do you wanna leave free from work during CRF sampling?
-cpu_counts_for_work = 1
+cpu_counts_for_work = 13
 
 # -------------------- The Algorithm -------------------------------------
 # 1.
 # Set algorithm parameters
-num_traversals = 10_000
+num_traversals = 20  # 10_000
 CFR_start_itartion = 1
-CFR_iterations = 20
-number_batches = 4_000
+CFR_iterations = 1#20
+number_batches = 300#4_000
 batch_size = 10_000
 reservoir_size = 40_000_000
 output_dim = 256  # model for card embeddings
@@ -109,3 +109,5 @@ trainer = DeepCFR_Coordinator(memory_buffer_size=500,
 
 trainer.deep_CFR(env_str, config_dict, CFR_start_itartion, CFR_iterations,
                  num_traversals, num_players, runner_kwargs, num_runners=num_cpus)
+
+# trainer.train_strat_model(max_bet_number)

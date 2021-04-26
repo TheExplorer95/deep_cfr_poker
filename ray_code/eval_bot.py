@@ -8,28 +8,37 @@ from datetime import datetime
 import pickle
 import os
 from tqdm import trange
-from deep_CFR_algorithm import Traversal_Runner
 
 """
 Experimental code used for evaluating entire dirs, not intended for basic use.
 Will be integrated into jupyter notebook after finish up. Automates some stuff.
 """
 
-n_games = 100_000
+n_games = 10_000
 save_plot = True
+model_output_types = ['action', 'action_2', 'bet']
 model_type_index = 1
+model_folder = 'training_batch_size_10000'
+random_model_fn = 'random_value_model'
+
+# allways [p0, p1]
 
 # -1 = random, -2 strategy
-players = [[0, -1]]
+players = [[1, -1],
+           [0, -1],
+           [1, -1]]
 
-CFR_iterations = [1]
+CFR_iterations = [[2, 2],
+                  [2, 2],
+                  [1, 1]]
 
-eval_strategy_net = [[False, False]]  # p0, p1
+eval_strategy_net = [[False, False],
+                     [False, False],
+                     [False, False]]
 
 # Model Stuff ---------------
 
 # model type
-model_output_types = ['action', 'action_2', 'bet']
 model_type = model_output_types[model_type_index]
 bet_fct = Bet_Fct(model_type)
 
@@ -37,14 +46,12 @@ bet_fct = Bet_Fct(model_type)
 agent_fct = TensorflowAgent
 
 # model paths
-model_folder = 'training_batch_size_10000'
-random_model_fn = 'random_value_model'
 strategy = ['advantage-model', 'strategy-model']
 trained_model_dir = f'trained_models/{model_type}_models/{model_folder}/'
 
 # folders for models
 fns_p0 = []
-for p, iteration in zip(np.array(players)[:, 0], CFR_iterations):
+for p, iteration in zip(np.array(players)[:, 0], np.array(CFR_iterations)[:, 0]):
     if p == -1:
         fns_p0.append(os.path.join(trained_model_dir, f'{random_model_fn}'))
     elif p == -2:
@@ -52,7 +59,7 @@ for p, iteration in zip(np.array(players)[:, 0], CFR_iterations):
     else:
         fns_p0.append(os.path.join(trained_model_dir, f'advantage-network_player-{p}_CRF-iteration-{iteration}'))
 fns_p1 = []
-for p, iteration in zip(np.array(players)[:, 1], CFR_iterations):
+for p, iteration in zip(np.array(players)[:, 1], np.array(CFR_iterations)[:, 1]):
     if p == -1:
         fns_p1.append(os.path.join(trained_model_dir, f'{random_model_fn}'))
     elif p == -2:

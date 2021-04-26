@@ -148,6 +148,27 @@ class DeepCFR_Coordinator:
         else:
             print('[ERROR] - Player {player}, is not implemented.')
 
+    def train_strat_model(self, max_bets):
+        print('\n------------------------- Started training the Strategy Network -------------------------')
+        file_name = os.path.join(self.memory_dir, "strategy_memory.h5")
+        num_infostates = min(self.strategy_writer.counter[1], self.reservoir_size)
+
+        train_ds = get_tf_dataset(file_name,
+                                  self.batch_size,
+                                  num_infostates,
+                                  num_cards=sum(self.n_cards),
+                                  num_bets=max_bets,
+                                  num_actions=self.num_actions)
+
+        model = self.train_model_from_scratch(0,
+                                              train_ds,
+                                              self.n_cards,
+                                              num_bets=max_bets,
+                                              num_actions=self.num_actions,
+                                              strategy=True)
+
+        return model
+
     def deep_CFR(self, env_str, config_dict, CFR_start_itartion, CFR_iterations, num_traversals, num_players,
                  runner_kwargs, num_runners):
         """
@@ -188,12 +209,6 @@ class DeepCFR_Coordinator:
         for t in range(CFR_start_itartion, CFR_iterations+1):
             print(f'\n------------------------- CFR-Iteration {t} -------------------------')
             for p in range(num_players):
-
-                # if t == 3 and p == 0:
-                #     continue
-                # elif t == 3 and p == 1:
-                #     num_traversals = 8409
-
                 # collect data from env via MonteCarlo style external sampling
                 print(f'[Payer - {p}] - Started sampling.')
                 futures = [runner.traverse.remote(history=[],
@@ -310,7 +325,7 @@ class DeepCFR_Coordinator:
         print(f'    - action_probs: fold/check {action_0:.2f} | check/call {action_1:.2f} | min_raise {action_2:.2f} | max_raise {action_3:.2f}', end='\n')
 
     def train_model_from_scratch(self, player, dataset, n_cards, num_bets,
-                                 num_actions, strategy, CFR_iteration):
+                                 num_actions, strategy, CFR_iteration=0):
         # create model
         model = get_DeepCFR_model(self.output_dim, n_cards, num_bets,
                                   num_actions, strategy)
