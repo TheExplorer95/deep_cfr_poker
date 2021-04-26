@@ -1,0 +1,6 @@
+# Janosch
+
+.ipynb_checkpoints
+__pycache__
+exp_data
+results/games-against-bot/*
